@@ -7,9 +7,11 @@ from yolact_edge.data import cfg, mask_type
 
 import numpy as np
 
-import pyximport
-pyximport.install(setup_args={"include_dirs":np.get_include()}, reload_support=True)
-from yolact_edge.utils.cython_nms import nms as cnms
+# import pyximport
+# pyximport.install(setup_args={"include_dirs":np.get_include()}, reload_support=True)
+# from yolact_edge.utils.cython_nms import nms as cnms
+
+from cython_nms import nms as cnms
 
 
 class Detect(object):
