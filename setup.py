@@ -6,7 +6,7 @@ import numpy
 
 cmdclass = {}
 cmdclass.update({'build_ext': build_ext})
-ext_modules = [Extension("cython_nms", ["yolact_edge/utils/cython_nms.pyx"], include_dirs=[numpy.get_include()])]
+ext_modules = [Extension("cython_nms", ["yolact_edge/utils/cython_nms.pyx"], include_dirs=[numpy.get_include()]])
 for e in ext_modules:
     e.cython_directives = {'language_level': "3"}
 
