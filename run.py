@@ -9,6 +9,7 @@ import numpy as np
 import logging
 import torch.backends.cudnn as cudnn
 import argparse
+from collections import defaultdict
 
 from yolact_edge.data import cfg, set_cfg
 from yolact_edge.utils import timer
@@ -44,6 +45,8 @@ parser.add_argument('--display_bboxes', default=True, type=str2bool,
                         help='Whether or not to display bboxes around masks')
 parser.add_argument('--display_text', default=True, type=str2bool,
                         help='Whether or not to display text (class [score])')
+parser.add_argument('--display_scores', default=True, type=str2bool,
+                        help='Whether or not to display scores in addition to classes')
 parser.add_argument('--video', default=None, type=str,
                         help='A path to a video to evaluate on. Passing in a number will use that index webcam.')
 parser.add_argument('--score_threshold', default=0, type=float,
@@ -56,6 +59,10 @@ parser.add_argument('--disable_tensorrt', default=False, dest='disable_tensorrt'
                         help='Don\'t use TensorRT optimization when specified.')
 parser.add_argument('--use_fp16_tensorrt', default=False, dest='use_fp16_tensorrt', action='store_true',
                         help='This replaces all TensorRT INT8 optimization with FP16 optimization when specified.')
+parser.add_argument('--video_multiframe', default=1, type=int,
+                        help='The number of frames to evaluate in parallel to make videos play at higher fps.')
+parser.add_argument('--display_lincomb', default=False, type=str2bool,
+                        help='If the config uses lincomb masks, output a visualization of how those masks are created.')
 
 ## used from yolact_edge/yolact.py
 parser.add_argument('--yolact_transfer', dest='yolact_transfer', action='store_true',
@@ -72,12 +79,16 @@ parser.set_defaults(
     top_k=30,
     cuda=False,
     video=0,
+    video_multiframe=2,
     score_threshold=0.3,
     trt_batch_size=2,
     use_fp16_tensorrt=True,
-    disable_tensorrt=True
+    disable_tensorrt=True,
+    crop=True
 )
 args = parser.parse_args()
+
+color_cache = defaultdict(lambda: {})
 
 
 def prep_display(dets_out, img, h, w, undo_transform=True, class_color=False, mask_alpha=0.45):
@@ -285,7 +296,8 @@ def evalvideo(net:Yolact, path:str):
                 if last_time is not None:
                     video_frame_times.add(next_time - last_time)
                     video_fps = 1 / video_frame_times.get_avg()
-                cv2.imshow(path, frame_buffer.get())
+                # cv2.imshow(path, frame_buffer.get())
+                cv2.imshow("frame", frame_buffer.get())
                 last_time = next_time
 
             if cv2.waitKey(1) == 27: # Press Escape to close
@@ -299,7 +311,8 @@ def evalvideo(net:Yolact, path:str):
                 if frame_time_stabilizer < 0:
                     frame_time_stabilizer = 0
 
-            new_target = frame_time_stabilizer if is_webcam else max(frame_time_stabilizer, frame_time_target)
+            # new_target = frame_time_stabilizer if is_webcam else max(frame_time_stabilizer, frame_time_target)
+            new_target = frame_time_stabilizer
 
             next_frame_target = max(2 * new_target - video_frame_times.get_avg(), 0)
             target_time = frame_time_start + next_frame_target - 0.001 # Let's just subtract a millisecond to be safe
@@ -365,7 +378,8 @@ def evalvideo(net:Yolact, path:str):
         frame_times.add(inference_time)
         inference_times.append(inference_time)
         fps = args.video_multiframe / frame_times.get_avg()
-        np.save(args.video, np.asarray(inference_times))
+        # np.save(args.video, np.asarray(inference_times))
+        np.save("./tmp/tmp", np.asarray(inference_times))
 
         print('\rProcessing FPS: %.2f | Video Playback FPS: %.2f | Frames in Buffer: %d    ' % (fps, video_fps, frame_buffer.qsize()), end='')
     
