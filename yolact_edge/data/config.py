@@ -943,6 +943,29 @@ yolact_edge_youtubevis_resnet50_config = yolact_edge_youtubevis_config.copy({
 # Default config
 cfg = yolact_edge_config.copy()
 
+## ------ turnip dataset ---------
+base_dir = "/content/Drive/MyDrive/かぶの画像/yoloact_dataset/data_dataset_coco"
+
+turnip_dataset = dataset_base.copy({
+    'name': 'coco_turnip',
+   
+    'train_images': base_dir,
+    'train_info':   f"{base_dir}/anotations.json",
+
+    'valid_images': base_dir,
+    'valid_info':   f"{base_dir}/anotations.json",
+    'class_names': ('turnip'),
+})
+
+turnip_mobilenetv2_config = yolact_edge_config.copy({
+    'name': 'yolact_edge_mobilenetv2',
+    'dataset': turnip_dataset,
+    'num_classes': len(turnip_dataset.class_names) + 1,
+
+    'backbone': mobilenetv2_backbone
+})
+## ------ turnip dataset ---------
+
 def set_cfg(config_name:str):
     """ Sets the active config. Works even if cfg is already imported! """
     global cfg
