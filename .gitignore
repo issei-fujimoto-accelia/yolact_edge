@@ -158,3 +158,7 @@ data/sbd
 data/video_files
 data/image_files
 data/calib_images
+
+.yolact_edge/
+train_images/data_dataset_coco
+train_images/labelme
