@@ -950,10 +950,10 @@ turnip_dataset = dataset_base.copy({
     'name': 'coco_turnip',
    
     'train_images': base_dir,
-    'train_info':   f"{base_dir}/anotations.json",
+    'train_info':   f"{base_dir}/annotations.json",
 
     'valid_images': base_dir,
-    'valid_info':   f"{base_dir}/anotations.json",
+    'valid_info':   f"{base_dir}/annotations.json",
     'class_names': ('turnip'),
 })
 
