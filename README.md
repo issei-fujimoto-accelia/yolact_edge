@@ -8,6 +8,8 @@
    ╚═╝    ╚═════╝ ╚══════╝╚═╝  ╚═╝ ╚═════╝   ╚═╝       ╚══════╝╚═════╝  ╚═════╝ ╚══════╝
 ```
 
+ここをみる [memo.md](memo.md).
+
 **YolactEdge**, the first competitive instance segmentation approach that runs on small edge devices at real-time speeds. Specifically, YolactEdge runs at up to 30.8 FPS on a Jetson AGX Xavier (and 172.7 FPS on an RTX 2080 Ti) with a ResNet-101 backbone on 550x550 resolution images. This is the code for [our paper](https://arxiv.org/abs/2012.12259).
 
 **For a real-time demo and more samples, check out our [demo video](https://www.youtube.com/watch?v=GBCK9SrcCLM).**
