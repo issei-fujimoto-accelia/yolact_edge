@@ -2,3 +2,4 @@ numpy
 torch
 opencv-python
 cython
+gitpython
