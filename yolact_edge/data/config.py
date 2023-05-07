@@ -944,7 +944,7 @@ yolact_edge_youtubevis_resnet50_config = yolact_edge_youtubevis_config.copy({
 cfg = yolact_edge_config.copy()
 
 ## ------ turnip dataset ---------
-base_dir = "/content/Drive/MyDrive/かぶの画像/yoloact_dataset/data_dataset_coco"
+base_dir = "/content/drive/MyDrive/かぶの画像202303/yoloact_dataset/data_dataset_coco"
 
 turnip_dataset = dataset_base.copy({
     'name': 'coco_turnip',
