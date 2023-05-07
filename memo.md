@@ -31,10 +31,35 @@ python setup.py build_ext --inplace
 labelmeでインスタンスセグメンテーション用に以下でlabel付け
 https://github.com/wkentaro/labelme?
 
+open dir -> create polygonsでラベルを付けていく
+
 `yolact_edge/data/turnip_dataset.py`にデータセット読み込み用のクラスが定義されている
+
+
+`./train_images/`にcloneしてくる
+https://github.com/wkentaro/labelme.git
+
+coco形式に変換
+
+```
+cd ./train_images/
+python labelme/examples/instance_segmentation/labelme2coco.py \
+resize_images data_dataset_coco --labels classes.txt 
+```
 
 
 参考: 
 https://nutritionfoodtech.com/2022/11/02/%e8%bb%bd%e9%87%8f%e3%81%aa%e3%82%a4%e3%83%b3%e3%82%b9%e3%82%bf%e3%83%b3%e3%82%b9%e3%82%bb%e3%82%b0%e3%83%a1%e3%83%b3%e3%83%86%e3%83%bc%e3%82%b7%e3%83%a7%e3%83%b3yolact-edge%e3%82%92%e3%82%ab%e3%82%b9/?
 
 
+
+## train
+```
+python3 train.py --config=turnip_mobilenetv2_config \
+--dataset=coco_turnip \
+--resume=../weights/turnip_mobilenetv2_config_0_0.pth \
+--start_iter=0 --batch_size=4 --num_workers=0 \
+--lr=0.001 
+```
+
+turnip
