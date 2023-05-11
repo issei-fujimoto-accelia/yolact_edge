@@ -1,10 +1,12 @@
+#!/bin/sh
 weight_path="./weights/yolact_edge_mobilenetv2_3499_14000.pth"
 image_path="./sample_images/PXL_20230330_085036313.MP.jp"
-mode = "pic"
-# mode = "vid"
+# run_mode="pict"
+run_mode="vid"
 
 ## for picture
-if $mode = "pic"; then
+if [ $run_mode == "pict" ]; then
+  echo "run pict"
   python3 eval.py \
   --trained_model=$weight_path \
   --score_threshold=0.45 \
@@ -12,20 +14,24 @@ if $mode = "pic"; then
   --image=$image_path \
   --config=turnip_mobilenetv2_config \
   --display \
-  --cuda=true \
+  --cuda=false \
   --disable_tensorrt
 fi
 
 ## for video
-if $mode = "vid"; then
+if [ $run_mode == "vid" ]; then
+  echo "run video"
   python3 eval.py \
   --trained_model=$weight_path \
   --score_threshold=0.45 \
   --top_k=3 \
   --config=turnip_mobilenetv2_config \
   --display \
-  --cuda=true \
+  --cuda=false \
   --disable_tensorrt \
-  --video 0
+  --video 0 \
+  --display_masks=false \
+  --display_bboxes=false \
+  --display_text=false 
 fi
 

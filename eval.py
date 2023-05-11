@@ -9,6 +9,8 @@ from yolact_edge.utils.functions import SavePath
 from yolact_edge.layers.output_utils import postprocess, undo_image_transformation
 from yolact_edge.utils.tensorrt import convert_to_tensorrt
 
+from show_frame import evalvideo_show_frame
+
 import pycocotools
 
 import numpy as np
@@ -652,7 +654,7 @@ class CustomDataParallel(torch.nn.DataParallel):
         # Note that I don't actually want to convert everything to the output_device
         return sum(outputs, [])
 
-def evalvideo(net:Yolact, path:str):
+def evalvideo(net:Yolact, path:str, cuda: bool):
     # If the path is a digit, parse it as a webcam index
     is_webcam = path.isdigit()
     
@@ -665,7 +667,7 @@ def evalvideo(net:Yolact, path:str):
         print('Could not open video "%s"' % path)
         exit(-1)
     
-    net = CustomDataParallel(net).cuda()
+    net = CustomDataParallel(net).cuda()        
     transform = torch.nn.DataParallel(FastBaseTransform()).cuda()
     frame_times = MovingAverage(400)
     fps = 0
@@ -928,7 +930,8 @@ def evaluate(net:Yolact, dataset, train_mode=False, train_cfg=None):
             inp, out = args.video.split(':')
             savevideo(net, inp, out)
         else:
-            evalvideo(net, args.video)
+            # evalvideo(net, args.video)
+            evalvideo_show_frame(net, args.video, args.cuda, args, cfg)
         return
 
 
@@ -1282,5 +1285,3 @@ if __name__ == '__main__':
             net = net.cuda()
 
         evaluate(net, dataset)
-
-

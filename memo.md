@@ -42,21 +42,18 @@ python setup.py build_ext --inplace
 
 
 ### data_set
-`./train_images/reshap.py`でtrain imageのresizeを行う
+`./train_images/reshap.py`でtrain imageのresizeを行う  
 出力先は`./train_images/resize_images/`
 
-labelmeでインスタンスセグメンテーション用に以下でlabel付け
+labelmeでインスタンスセグメンテーション用に以下でlabel付け  
 https://github.com/wkentaro/labelme?
 
-open dir -> create polygonsでラベルを付けていく
+open dir -> create polygonsでラベルを付けていく  
 
-`yolact_edge/data/turnip_dataset.py`にデータセット読み込み用のクラスが定義されている
-
-
-`./train_images/`にcloneしてくる
+labelmeは`./train_images/`へclone  
 https://github.com/wkentaro/labelme.git
 
-coco形式に変換
+以下でcoco形式に変換
 
 ```
 cd ./train_images/
