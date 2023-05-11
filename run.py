@@ -63,6 +63,9 @@ parser.add_argument('--video_multiframe', default=1, type=int,
                         help='The number of frames to evaluate in parallel to make videos play at higher fps.')
 parser.add_argument('--display_lincomb', default=False, type=str2bool,
                         help='If the config uses lincomb masks, output a visualization of how those masks are created.')
+parser.add_argument('--config', required=True, help='The config object to use.')                        
+parser.add_argument('--verbose', default=True, type=str2bool,
+                        help='show debug print')
 
 ## used from yolact_edge/yolact.py
 parser.add_argument('--yolact_transfer', dest='yolact_transfer', action='store_true',
@@ -84,7 +87,8 @@ parser.set_defaults(
     trt_batch_size=2,
     use_fp16_tensorrt=True,
     disable_tensorrt=True,
-    crop=True
+    crop=True,
+    fast_eval=True
 )
 args = parser.parse_args()
 
@@ -205,23 +209,16 @@ class CustomDataParallel(torch.nn.DataParallel):
         # Note that I don't actually want to convert everything to the output_device
         return sum(outputs, [])
 
-def evalvideo(net:Yolact, path:str):
+def evalvideo_show_frame(net:Yolact, path:str):
     vid = cv2.VideoCapture(int(path))
     
     if not vid.isOpened():
         print('Could not open video "%s"' % path)
         exit(-1)
-    if args.cuda:
-        net = CustomDataParallel(net).cuda()
-    else:
-        logger.warning('CustomDataParallel not use cuda...')
-        net = CustomDataParallel(net)
-
-    if args.cuda:
-        transform = torch.nn.DataParallel(FastBaseTransform()).cuda()
-    else:
-        logger.warning('DataParallel not use cuda...')
-        transform = torch.nn.DataParallel(FastBaseTransform())
+    
+    net = CustomDataParallel(net).cuda()
+    transform = torch.nn.DataParallel(FastBaseTransform()).cuda()
+    
     frame_times = MovingAverage(400)
     fps = 0
     # The 0.8 is to account for the overhead of time.sleep
@@ -374,14 +371,15 @@ def evalvideo(net:Yolact, path:str):
         active_frames.append({'value': next_frames.get(), 'idx': len(sequence)-1})
         
         # Compute FPS
-        inference_time = time.time() - start_time
-        frame_times.add(inference_time)
-        inference_times.append(inference_time)
-        fps = args.video_multiframe / frame_times.get_avg()
-        # np.save(args.video, np.asarray(inference_times))
-        np.save("./tmp/tmp", np.asarray(inference_times))
+        if args.verbose:
+            inference_time = time.time() - start_time
+            frame_times.add(inference_time)
+            inference_times.append(inference_time)
+            fps = args.video_multiframe / frame_times.get_avg()
+            # np.save(args.video, np.asarray(inference_times))
+            # np.save("./tmp/tmp", np.asarray(inference_times))
 
-        print('\rProcessing FPS: %.2f | Video Playback FPS: %.2f | Frames in Buffer: %d    ' % (fps, video_fps, frame_buffer.qsize()), end='')
+            print('\rProcessing FPS: %.2f | Video Playback FPS: %.2f | Frames in Buffer: %d    ' % (fps, video_fps, frame_buffer.qsize()), end='')
     
     cleanup_and_exit()
 
@@ -389,10 +387,7 @@ def evalvideo(net:Yolact, path:str):
 
 
 if __name__ == '__main__':
-    model_path = SavePath.from_str(args.trained_model)
-    # TODO: Bad practice? Probably want to do a name lookup instead.
-    args.config = model_path.model_name + '_config'
-    print('Config not specified. Parsed %s from the file name.\n' % args.config)
+    model_path = SavePath.from_str(args.trained_model)    
     set_cfg(args.config)
 
     if args.detect:
@@ -409,9 +404,9 @@ if __name__ == '__main__':
         if args.cuda:
             cudnn.benchmark = True
             cudnn.fastest = True
-            if args.deterministic:
-                cudnn.deterministic = True
-                cudnn.benchmark = False
+            #if args.deterministic:
+            #    cudnn.deterministic = True
+            #    cudnn.benchmark = False
             torch.set_default_tensor_type('torch.cuda.FloatTensor')
         else:
             torch.set_default_tensor_type('torch.FloatTensor')

@@ -164,6 +164,8 @@ def prep_display(dets_out, img, h, w, undo_transform=True, class_color=False, ma
         h, w, _ = img.shape
     
     with timer.env('Postprocess'):
+        ## todo
+        # ここでかぶだけとりだす1
         t = postprocess(dets_out, w, h, visualize_lincomb = args.display_lincomb,
                                         crop_masks        = args.crop,
                                         score_threshold   = args.score_threshold)
@@ -180,7 +182,9 @@ def prep_display(dets_out, img, h, w, undo_transform=True, class_color=False, ma
         if scores[j] < args.score_threshold:
             num_dets_to_consider = j
             break
-    
+    ## todo
+    # ここでかぶだけとりだす2
+
     if num_dets_to_consider == 0:
         # No detections found so just output the original image
         return (img_gpu * 255).byte().cpu().numpy()
