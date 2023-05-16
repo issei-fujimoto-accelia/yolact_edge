@@ -5,6 +5,7 @@ import time
 from multiprocessing.pool import ThreadPool
 from queue import Queue
 import numpy as np
+from collections import defaultdict
 
 from yolact_edge.layers.output_utils import postprocess, undo_image_transformation
 from yolact_edge.utils import timer
@@ -14,11 +15,24 @@ from yolact_edge.utils.functions import MovingAverage
 from yolact_edge.utils.augmentations import FastBaseTransform
 from yolact_edge.utils.augmentations import BaseTransform
 
+COLOR_BY_SIZE = (
+    (255, 0, 0), # blue
+    (0, 0, 255), # red
+    (0, 255, 0), # green
+)
 
+
+color_cache = defaultdict(lambda: {})
 def prep_display(args, cfg, dets_out, img, h, w, undo_transform=True, class_color=False, mask_alpha=0.45):
     """
     Note: If undo_transform=False then im_h and im_w are allowed to be None.
     """
+    if args.hide_back:
+      img = torch.zeros(img.shape, dtype=torch.int8)
+      img = img + 255
+      if args.cuda:
+          img = img.cuda()
+
     if undo_transform:
         img_numpy = undo_image_transformation(img, w, h)
         img_gpu = torch.Tensor(img_numpy).cuda()
@@ -66,6 +80,20 @@ def prep_display(args, cfg, dets_out, img, h, w, undo_transform=True, class_colo
                 color = torch.Tensor(color).to(on_gpu).float() / 255.
                 color_cache[on_gpu][color_idx] = color
             return color
+        
+    def get_color_by_size(mask, on_gpu=True):
+        size = torch.count_nonzero(mask)
+        if size < 2000:
+          color_idx = 0
+        elif size < 2500:
+          color_idx = 1
+        else:  
+          color_idx = 2
+        color = COLOR_BY_SIZE[color_idx]
+        if on_gpu is not None:
+          color = torch.Tensor(color).to(on_gpu).float() / 255.
+          color_cache[on_gpu][color_idx] = color
+        return color
 
     # First, draw the masks on the GPU where we can do it really fast
     # Beware: very fast but possibly unintelligible mask-drawing code ahead
@@ -75,7 +103,10 @@ def prep_display(args, cfg, dets_out, img, h, w, undo_transform=True, class_colo
         masks = masks[:num_dets_to_consider, :, :, None]
         
         # Prepare the RGB images for each mask given their color (size [num_dets, h, w, 1])
-        colors = torch.cat([get_color(j, on_gpu=img_gpu.device.index).view(1, 1, 1, 3) for j in range(num_dets_to_consider)], dim=0)
+        # colors = torch.cat([get_color(j, on_gpu=img_gpu.device.index).view(1, 1, 1, 3) for j in range(num_dets_to_consider)], dim=0)
+        ## color by size
+        colors = torch.cat([get_color_by_size(masks[j], on_gpu=img_gpu.device.index).view(1, 1, 1, 3) for j in range(num_dets_to_consider)], dim=0)
+        
         masks_color = masks.repeat(1, 1, 1, 3) * colors * mask_alpha
 
         # This is 1 everywhere except for 1-mask_alpha where the mask is
@@ -96,7 +127,7 @@ def prep_display(args, cfg, dets_out, img, h, w, undo_transform=True, class_colo
     # Note, make sure this is a uint8 tensor or opencv will not anti alias text for whatever reason
     img_numpy = (img_gpu * 255).byte().cpu().numpy()
     
-    if args.display_text or args.display_bboxes:
+    if args.display_text or args.display_bboxes or args.display_size:
         for j in reversed(range(num_dets_to_consider)):
             x1, y1, x2, y2 = boxes[j, :]
             color = get_color(j)
@@ -105,9 +136,25 @@ def prep_display(args, cfg, dets_out, img, h, w, undo_transform=True, class_colo
             if args.display_bboxes:
                 cv2.rectangle(img_numpy, (x1, y1), (x2, y2), color, 1)
 
+            if args.display_size:
+                size = torch.count_nonzero(masks[j])
+                text_str = 'size: %d' % size
+
+                font_face = cv2.FONT_HERSHEY_DUPLEX
+                font_scale = 0.6
+                font_thickness = 1
+
+                text_pt = (x1, y1 - 3)
+                # text_color = [255, 255, 255]
+                text_color = [0, 0, 0]
+                
+                cv2.putText(img_numpy, text_str, text_pt, font_face, font_scale, text_color, font_thickness, cv2.LINE_AA)                
+
             if args.display_text:
                 _class = cfg.dataset.class_names[classes[j]]
-                text_str = '%s: %.2f' % (_class, score) if args.display_scores else _class
+                size = torch.count_nonzero(masks[j])
+                # text_str = '%s: %.2f' % (_class, score) if args.display_scores else _class
+                text_str = '%s, score: %.2f, size: %d' % (_class, score, size) if args.display_scores else _class
 
                 font_face = cv2.FONT_HERSHEY_DUPLEX
                 font_scale = 0.6
@@ -201,7 +248,7 @@ def evalvideo_show_frame(net:Yolact, path:str, cuda: bool, args, cfg):
     def prep_frame(inp):
         with torch.no_grad():
             frame, preds = inp
-            return prep_display(args, cfg, preds, frame, None, None, undo_transform=False, class_color=True)
+            return prep_display(args, cfg, preds, frame, None, None, undo_transform=False, class_color=True, mask_alpha=1)
 
     frame_buffer = Queue()
     video_fps = 0
