@@ -27,13 +27,13 @@ if [ $run_mode == "vid" ]; then
   --top_k=3 \
   --config=turnip_mobilenetv2_config \
   --display \
-  --cuda=false \
+  --cuda=true \
   --disable_tensorrt \
   --video 0 \
-  --display_masks=false \
+  --display_masks=true \
   --display_bboxes=false \
   --display_text=false \
   --display_size=true \
-  --hide_back=false
+  --hide_back=true
 fi
 
