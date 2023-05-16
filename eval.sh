@@ -32,6 +32,8 @@ if [ $run_mode == "vid" ]; then
   --video 0 \
   --display_masks=false \
   --display_bboxes=false \
-  --display_text=false 
+  --display_text=false \
+  --display_size=true \
+  --hide_back=false
 fi
 

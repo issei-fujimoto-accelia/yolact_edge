@@ -140,6 +140,9 @@ def parse_args(argv=None):
     ## ---- add user ----
     parser.add_argument('--hide_back', default=True, type=str2bool,
                         help='hide background, when show frame')
+    parser.add_argument('--display_size', default=True, type=str2bool,
+                        help='hide background, when show frame')
+
 
     parser.set_defaults(no_bar=False, display=False, resume=False, output_coco_json=False, output_web_json=False, shuffle=False,
                         benchmark=False, no_sort=False, no_hash=False, mask_proto_debug=False, crop=True, detect=False)
