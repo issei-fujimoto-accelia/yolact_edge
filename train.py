@@ -34,7 +34,7 @@ def str2bool(v):
     return v.lower() in ("yes", "true", "t", "1")
 
 
-parser = argparse.ArgumentParser(
+parser = argparse.ArgumentParse(r
     description='Yolact Training Script')
 parser.add_argument('--batch_size', default=8, type=int,
                     help='Batch size for training')
@@ -142,6 +142,16 @@ def multi_gpu_rescale(args):
     cfg.max_iter = cfg.max_iter // scale_factor
     cfg.lr_steps = tuple([lr_step // scale_factor for lr_step in cfg.lr_steps])
 
+def save_args(args, save_dir):
+    import json
+    args = [(i, getattr(args, i)) for i in dir(args) if not '_' in i[0]]
+    data = dict()
+    for i, j in args:   
+        data[i] = str(j)    
+    save_file = f"{save_dir}/config.json"    
+    with open(save_file, mode="w") as fp:
+        json.dump(data, fp, indent=2, ensure_ascii=False)
+    print(f"save config...{save_file}")
 
 def train(rank, args):
     if args.num_gpus > 1:
@@ -149,6 +159,9 @@ def train(rank, args):
     if rank == 0:
         if not os.path.exists(args.save_folder):
             os.mkdir(args.save_folder)
+
+    ## save_args
+    save_args(args, args.save_folder)
 
     # fix the seed for reproducibility
     seed = args.random_seed + rank
