@@ -669,7 +669,6 @@ def evalvideo(net:Yolact, path:str, cuda: bool):
         vid = cv2.VideoCapture(int(path))
     else:
         vid = cv2.VideoCapture(path)
-    
     if not vid.isOpened():
         print('Could not open video "%s"' % path)
         exit(-1)
@@ -838,7 +837,7 @@ def evalvideo(net:Yolact, path:str, cuda: bool):
 
 def savevideo(net:Yolact, in_path:str, out_path:str):
 
-    vid = cv2.VideoCapture(in_path)
+    vid = cv2.VideoCapture(in_path)    
 
     target_fps   = round(vid.get(cv2.CAP_PROP_FPS))
     frame_width  = round(vid.get(cv2.CAP_PROP_FRAME_WIDTH))

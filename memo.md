@@ -1,4 +1,17 @@
 # Memo
+## usage
+bash eval.sh
+(ubuntuの場合 device idは2)
+
+
+カメラのdevice idの確認
+v4l2-ctl --list-devices
+
+
+カメラの動作確認用
+python check_cam.py
+
+
 ## dataset
 https://drive.google.com/drive/folders/110s6xcs1w-31i7g3rDzlu2j8123Me0YT?usp=share_link
 
