@@ -15,12 +15,21 @@ from yolact_edge.utils.functions import MovingAverage
 from yolact_edge.utils.augmentations import FastBaseTransform
 from yolact_edge.utils.augmentations import BaseTransform
 
-COLOR_BY_SIZE = (
-    (255, 0, 0), # blue
-    (0, 0, 255), # red
-    (0, 255, 0), # green
+COLORS = dict(
+    blue=(255, 0, 0),
+    red=(0, 0, 255),
+    green=(0, 255, 0),
 )
+## (255, 0, 165), # puple  
+## (128, 0, 128), # puple
 
+
+HEIGHT=1080
+WIDTH=1920
+FPS=20
+
+SIZE_SMALL= 5000
+SIZE_MIDIUM = 20000
 
 color_cache = defaultdict(lambda: {})
 def prep_display(args, cfg, dets_out, img, h, w, undo_transform=True, class_color=False, mask_alpha=0.45):
@@ -72,7 +81,8 @@ def prep_display(args, cfg, dets_out, img, h, w, undo_transform=True, class_colo
         if on_gpu is not None and color_idx in color_cache[on_gpu]:
             return color_cache[on_gpu][color_idx]
         else:
-            color = COLORS[color_idx]
+            k = list(COLORS.keys())[color_idx]  
+            color = COLORS[k]
             if not undo_transform:
                 # The image might come in as RGB or BRG, depending
                 color = (color[2], color[1], color[0])
@@ -83,16 +93,16 @@ def prep_display(args, cfg, dets_out, img, h, w, undo_transform=True, class_colo
         
     def get_color_by_size(mask, on_gpu=True):
         size = torch.count_nonzero(mask)
-        if size < 2000:
-          color_idx = 0
-        elif size < 2500:
-          color_idx = 1
+        if size < SIZE_SMALL:
+          select_color = "blue"
+        elif size < SIZE_MIDIUM:
+          select_color = "red"
         else:  
-          color_idx = 2
-        color = COLOR_BY_SIZE[color_idx]
+          select_color = "green"
+        color = COLORS[select_color]
         if on_gpu is not None:
           color = torch.Tensor(color).to(on_gpu).float() / 255.
-          color_cache[on_gpu][color_idx] = color
+          ## color_cache[on_gpu][color_idx] = color
         return color
 
     # First, draw the masks on the GPU where we can do it really fast
@@ -191,7 +201,13 @@ class CustomDataParallel(torch.nn.DataParallel):
 
 def evalvideo_show_frame(net:Yolact, path:str, cuda: bool, args, cfg):    
     vid = cv2.VideoCapture(int(path))
-    
+    vid.set(cv2.CAP_PROP_FRAME_WIDTH, WIDTH)
+    vid.set(cv2.CAP_PROP_FRAME_HEIGHT, HEIGHT)
+    vid.set(cv2.CAP_PROP_FPS, FPS)
+
+    print("width: ", cv2.CAP_PROP_FRAME_WIDTH)
+    print("height: ", cv2.CAP_PROP_FRAME_HEIGHT)
+
     if not vid.isOpened():
         print('Could not open video "%s"' % path)
         exit(-1)
