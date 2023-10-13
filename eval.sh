@@ -1,6 +1,8 @@
 #!/bin/sh
-# weight_path="./weights/yolact_edge_mobilenetv2_3499_14000.pth"
-weight_path="./weights/yolact_edge_mobilenetv2_1749_7000.pth"
+## weight_path="./weights/yolact_edge_mobilenetv2_3499_14000.pth"
+## weight_path="./weights/yolact_edge_mobilenetv2_1749_7000.pth"
+weight_path="./weights/yolact_edge_mobilenetv2_276_3319_interrupt.pth"
+
 
 image_path="./sample_images/PXL_20230330_085036313.MP.jp"
 # run_mode="pict"
@@ -31,11 +33,12 @@ if [ $run_mode == "vid" ]; then
   --display \
   --cuda=true \
   --disable_tensorrt \
-  --video 0 \
+  --video 2 \
   --display_masks=true \
   --display_bboxes=false \
   --display_text=true \
   --display_size=true \
-  --hide_back=false
+  --hide_back=false \
+  --display_ajuster=true
 fi
 
