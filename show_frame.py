@@ -26,6 +26,10 @@ COLORS = dict(
 
 HEIGHT=1080
 WIDTH=1920
+
+HEIGHT=1080/2
+WIDTH=1920/2
+
 FPS=20
 
 SIZE_SMALL= 5000
@@ -37,10 +41,10 @@ def prep_display(args, cfg, dets_out, img, h, w, undo_transform=True, class_colo
     Note: If undo_transform=False then im_h and im_w are allowed to be None.
     """
     if args.hide_back:
-      img = torch.zeros(img.shape, dtype=torch.int8)
-      img = img + 255
-      if args.cuda:
-          img = img.cuda()
+        img = torch.zeros(img.shape, dtype=torch.int8)
+        img = img + 255
+        if args.cuda:
+            img = img.cuda()
 
     if undo_transform:
         img_numpy = undo_image_transformation(img, w, h)
@@ -178,6 +182,10 @@ def prep_display(args, cfg, dets_out, img, h, w, undo_transform=True, class_colo
                 cv2.rectangle(img_numpy, (x1, y1), (x1 + text_w, y1 - text_h - 4), color, -1)
                 cv2.putText(img_numpy, text_str, text_pt, font_face, font_scale, text_color, font_thickness, cv2.LINE_AA)
     
+    if args.display_ajuster:        
+        _h, _w, _ = img_numpy.shape
+        cv2.circle(img_numpy, (20, 20), 40, COLORS["red"], thickness=-1)
+
     return img_numpy
 
 
@@ -186,6 +194,18 @@ class CustomDataParallel(torch.nn.DataParallel):
     def gather(self, outputs, output_device):
         # Note that I don't actually want to convert everything to the output_device
         return sum(outputs, [])
+
+def show_ajuster(vid):
+    ret, frame = vid.read()
+    _h, _w, _ = frame.shape
+    _r = 40
+    cv2.circle(frame, (int(_w/2), int(_h/2)), _r, COLORS["red"], thickness=-1) ## 真ん中
+    cv2.circle(frame, (_w-_r, _r), _r, COLORS["red"], thickness=-1) ## 右上
+    cv2.circle(frame, (0+_r, 0+_r), _r, COLORS["red"], thickness=-1) ## 左上     
+    cv2.circle(frame, (_w-_r, _h-_r), _r, COLORS["red"], thickness=-1) ## 右下
+    cv2.circle(frame, (_r, _h-_r), _r, COLORS["red"], thickness=-1) ## 左下
+    cv2.imshow("frame", frame)
+
 
 def evalvideo_show_frame(net:Yolact, path:str, cuda: bool, args, cfg):    
     vid = cv2.VideoCapture(int(path))
@@ -289,7 +309,9 @@ def evalvideo_show_frame(net:Yolact, path:str, cuda: bool, args, cfg):
                 # cv2.imshow(path, frame_buffer.get())
                 cv2.imshow("frame", frame_buffer.get())
                 last_time = next_time
-
+            if args.display_ajuster:
+                show_ajuster(vid)
+                
             if cv2.waitKey(1) == 27: # Press Escape to close
                 running = False
 
