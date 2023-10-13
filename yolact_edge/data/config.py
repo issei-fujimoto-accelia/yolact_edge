@@ -947,6 +947,7 @@ cfg = yolact_edge_config.copy()
 ## base_dir = "/content/drive/MyDrive/かぶの画像202303/yolact_dataset/data_dataset_coco_grouped" ## 複数のカブが1つのグループとしてラベル付けデータセット,多分別グループの方が良さそう
 ## base_dir = "/content/drive/MyDrive/かぶの画像202303/yolact_dataset/data_dataset_coco" ## 複数のカブを別々のグループにしたもの、v1
 base_dir = "/content/drive/MyDrive/かぶの画像202303/yolact_dataset/data_dataset_coco_merged" ## 撮影した画像に、過去に撮影したものやネットにある画像を少し混ぜたデータセット
+## base_dir = "./data_dataset_coco_merged" ## for local linux pc
 
 turnip_dataset = dataset_base.copy({
     'name': 'coco_turnip',
@@ -956,7 +957,8 @@ turnip_dataset = dataset_base.copy({
 
     'valid_images': base_dir,
     'valid_info':   f"{base_dir}/annotations.json",
-    'class_names': ('turnip'),
+    # 'class_names': ('turnip'),
+    'class_names': ('turnip',) + COCO_CLASSES,
 })
 
 turnip_mobilenetv2_config = yolact_edge_config.copy({
