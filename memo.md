@@ -55,9 +55,13 @@ python setup.py build_ext --inplace
 
 
 ### data_set
-`./train_images/reshap.py`でtrain imageのresizeを行う  
+#### reshape.py
+`./train_images/reshap.py`
+iPhoneで撮った画像のサイズ調整を行う  
+
 出力先は`./train_images/resize_images/`
 
+#### labelme
 labelmeでインスタンスセグメンテーション用に以下でlabel付け  
 https://github.com/wkentaro/labelme?
 
@@ -66,6 +70,14 @@ open dir -> create polygonsでラベルを付けていく
 labelmeは`./train_images/`へclone  
 https://github.com/wkentaro/labelme.git
 
+`train_images/resize_images`にラベル付けしたい画像を保存  
+labelmeでラベルとセグメンテーションをつけて、`resize_images`へ保存で、jsonファイルが保存される。  
+再度resize_imagesを開くとラベル、セグメンテーションされた状態で開くことができる。  
+
+カブ1つに1グループを割り振るようにする。  
+例えば、カブが3つ写っている場合は、グループ１、２、３を割り振る。  
+
+#### coco形式への変換
 以下でcoco形式に変換
 
 ```

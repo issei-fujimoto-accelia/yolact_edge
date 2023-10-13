@@ -142,6 +142,16 @@ def multi_gpu_rescale(args):
     cfg.max_iter = cfg.max_iter // scale_factor
     cfg.lr_steps = tuple([lr_step // scale_factor for lr_step in cfg.lr_steps])
 
+def save_args(args, save_dir):
+    import json
+    args = [(i, getattr(args, i)) for i in dir(args) if not '_' in i[0]]
+    data = dict()
+    for i, j in args:   
+        data[i] = str(j)    
+    save_file = f"{save_dir}/config.json"    
+    with open(save_file, mode="w") as fp:
+        json.dump(data, fp, indent=2, ensure_ascii=False)
+    print(f"save config...{save_file}")
 
 def train(rank, args):
     if args.num_gpus > 1:
@@ -149,6 +159,9 @@ def train(rank, args):
     if rank == 0:
         if not os.path.exists(args.save_folder):
             os.mkdir(args.save_folder)
+
+    ## save_args
+    save_args(args, args.save_folder)
 
     # fix the seed for reproducibility
     seed = args.random_seed + rank
@@ -497,21 +510,26 @@ def train(rank, args):
                         # torch.cuda.reset_max_memory_allocated()
                     else:
                         max_mem_mb = None
+                    
+                    _time = "{:.3f}".format(elapsed)
+                    _data_time = "{:.3f}".format(data_time_avg.get_avg()),
+                    _memory = "{:.0f}M".format(max_mem_mb)
+                    logger.info(f"epoch: {epoch}  iter: {iteration} time: {_time}  data_time: {_data_time}  lr: {lr}  memory: {_memory}")
 
-                    logger.info("""\
-eta: {eta}  epoch: {epoch}  iter: {iter}  \
-{losses}  {loss_total}  \
-time: {time}  data_time: {data_time}  lr: {lr}  {memory}\
-""".format(
-                        eta=eta_str, epoch=epoch, iter=iteration,
-                        losses="  ".join(
-                            ["{}: {:.3f}".format(k, loss_avgs[k].get_avg()) for k in losses]
-                        ),
-                        loss_total="T: {:.3f}".format(sum([loss_avgs[k].get_avg() for k in losses])),
-                        data_time="{:.3f}".format(data_time_avg.get_avg()),
-                        time="{:.3f}".format(elapsed),
-                        lr="{:.6f}".format(lr), memory="max_mem: {:.0f}M".format(max_mem_mb)
-                    ))
+                    loss_key_map = dict(
+                        B="Box Localization Loss",
+                        C="Class Confidence Loss",
+                        M="Mask Loss",
+                        P="Prototype Loss",
+                        D="Coefficient Diversity Loss",
+                        E="Class Existence Loss",
+                        S="Semantic Segmentation Loss"
+                    )
+                    for k in losses:
+                        loss = loss_avgs[k].get_avg()
+                        logger.info(f"{loss_key_map[k]}: {loss}")                                        
+                    _loss_total="{:.3f}".format(sum([loss_avgs[k].get_avg() for k in losses]))
+                    logger.info(f"loss_total: {_loss_total}")
 
                 if rank == 0 and iteration % 100 == 0:
                     

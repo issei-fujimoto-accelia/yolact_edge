@@ -944,7 +944,9 @@ yolact_edge_youtubevis_resnet50_config = yolact_edge_youtubevis_config.copy({
 cfg = yolact_edge_config.copy()
 
 ## ------ turnip dataset ---------
-base_dir = "/content/drive/MyDrive/かぶの画像202303/yolact_dataset/data_dataset_coco"
+## base_dir = "/content/drive/MyDrive/かぶの画像202303/yolact_dataset/data_dataset_coco_grouped" ## 複数のカブが1つのグループとしてラベル付けデータセット,多分別グループの方が良さそう
+## base_dir = "/content/drive/MyDrive/かぶの画像202303/yolact_dataset/data_dataset_coco" ## 複数のカブを別々のグループにしたもの、v1
+base_dir = "/content/drive/MyDrive/かぶの画像202303/yolact_dataset/data_dataset_coco_merged" ## 撮影した画像に、過去に撮影したものやネットにある画像を少し混ぜたデータセット
 
 turnip_dataset = dataset_base.copy({
     'name': 'coco_turnip',
