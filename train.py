@@ -530,7 +530,7 @@ def train(rank, args):
                         logger.info(f"{loss_key_map[k]}: {loss}")
                     _loss_total="{:.3f}".format(sum([loss_avgs[k].get_avg() for k in losses]))
                     logger.info(f"loss_total: {_loss_total}")
-                    print("="*:200)
+                    print("="*200)
 
                 if rank == 0 and iteration % 100 == 0:
                     
