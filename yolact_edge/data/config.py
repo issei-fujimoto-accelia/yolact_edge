@@ -949,6 +949,9 @@ cfg = yolact_edge_config.copy()
 base_dir = "/content/drive/MyDrive/かぶの画像202303/yolact_dataset/data_dataset_coco_merged" ## 撮影した画像に、過去に撮影したものやネットにある画像を少し混ぜたデータセット
 ## base_dir = "./data_dataset_coco_merged" ## for local linux pc
 
+turnip_class_map = COCO_CLASSES.copy()
+turnip_class_map[81] = 81
+
 turnip_dataset = dataset_base.copy({
     'name': 'coco_turnip',
    
@@ -958,7 +961,9 @@ turnip_dataset = dataset_base.copy({
     'valid_images': base_dir,
     'valid_info':   f"{base_dir}/annotations.json",
     # 'class_names': ('turnip'),
-    'class_names': ('turnip',) + COCO_CLASSES,
+    'class_names': COCO_CLASSES + ('turnip',),
+
+    'label_map': turnip_class_map
 })
 
 turnip_mobilenetv2_config = yolact_edge_config.copy({
