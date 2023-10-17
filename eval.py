@@ -600,7 +600,8 @@ def badhash(x):
 
 def evalimage(net:Yolact, path:str, save_path:str=None, detections:Detections=None, image_id=None):
     frame = torch.from_numpy(cv2.imread(path)).cuda().float()
-    batch = FastBaseTransform()(frame.unsqueeze(0))
+    is_cuda = torch.cuda.is_available()    
+    batch = FastBaseTransform(is_cuda)(frame.unsqueeze(0))
 
     if cfg.flow.warp_mode != 'none':
         assert False, "Evaluating the image with a video-based model. If you believe this is a problem, please report a issue at GitHub, thanks."
