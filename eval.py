@@ -142,6 +142,8 @@ def parse_args(argv=None):
                         help='hide background, when show frame')
     parser.add_argument('--display_size', default=True, type=str2bool,
                         help='hide background, when show frame')
+    parser.add_argument('--display_dot', default=True, type=str2bool,
+                        help='maskの代わりにドットでかぶの位置を表示')
     parser.add_argument('--display_ajuster', default=True, type=str2bool,
                         help='show ajuster')
 
