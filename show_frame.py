@@ -35,6 +35,8 @@ FPS=20
 SIZE_SMALL= 5000
 SIZE_MIDIUM = 20000
 
+DOT_RAD=30
+
 color_cache = defaultdict(lambda: {})
 def prep_display(args, cfg, dets_out, img, h, w, undo_transform=True, class_color=False, mask_alpha=0.45):
     """
@@ -168,7 +170,7 @@ def prep_display(args, cfg, dets_out, img, h, w, undo_transform=True, class_colo
                     _y = int((y2 - y1) // 2 + y1)
                     cv2.circle(img_numpy,
                         center=(_x, _y),
-                        radius=15,
+                        radius=DOT_RAD,
                         color=color,
                         thickness=-1,
                         lineType=cv2.LINE_4,
