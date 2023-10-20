@@ -13,7 +13,7 @@ from yolact_edge.utils import timer
 from .box_utils import crop, sanitize_coordinates, center_size
 
 def postprocess(det_output, w, h, batch_idx=0, interpolation_mode='bilinear',
-                visualize_lincomb=False, crop_masks=True, score_threshold=0, class_idx = 0):
+                visualize_lincomb=False, crop_masks=True, score_threshold=0, keep_class_idx = 0):
     """
     Postprocesses the output of Yolact on testing mode into a format that makes sense,
     accounting for all the possible configuration settings.
@@ -24,6 +24,7 @@ def postprocess(det_output, w, h, batch_idx=0, interpolation_mode='bilinear',
         - h: The real height of the image.
         - batch_idx: If you have multiple images for this batch, the image's index in the batch.
         - interpolation_mode: Can be 'nearest' | 'area' | 'bilinear' (see torch.nn.functional.interpolate)
+        - keep_class_idx: ここで指定したindexのみを取り出す。(たとえばカブのクラスが0であれば0を指定する)
 
     Returns 4 torch Tensors (in the following order):
         - classes [num_det]: The class idx for each detection.
@@ -38,8 +39,12 @@ def postprocess(det_output, w, h, batch_idx=0, interpolation_mode='bilinear',
         return [torch.Tensor()] * 4 # Warning, this is 4 copies of the same thing
 
     if score_threshold > 0:
+        ## default
+        # keep = dets['score'] > score_threshold
+
+        ## ここでカブのみを取り出す
         _s = dets['score'] > score_threshold
-        _c = dets['class'] == class_idx
+        _c = dets['class'] == keep_class_idx
         keep = torch.logical_and(_s, _c)
         
         for k in dets:
