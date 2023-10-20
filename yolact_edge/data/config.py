@@ -960,10 +960,16 @@ turnip_dataset = dataset_base.copy({
 
     'valid_images': base_dir,
     'valid_info':   f"{base_dir}/annotations.json",
-    # 'class_names': ('turnip'),
-    'class_names': COCO_CLASSES + ('turnip',),
 
-    'label_map': turnip_class_map
+    ## only turnip
+    'class_names': ('turnip',),
+    'label_map': {1:1} 
+
+    ## with codo
+    # 'class_names': ('turnip',) + COCO_CLASSES,
+    # 'class_names': COCO_CLASSES + ('turnip',),
+    # 'label_map': turnip_class_map
+    
 })
 
 turnip_mobilenetv2_config = yolact_edge_config.copy({
