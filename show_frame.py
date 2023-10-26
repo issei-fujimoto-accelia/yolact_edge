@@ -37,6 +37,8 @@ SIZE_MIDIUM = 20000
 
 DOT_RAD=30
 
+TURNIP_LABEL_IDX = 0
+
 color_cache = defaultdict(lambda: {})
 def prep_display(args, cfg, dets_out, img, h, w, undo_transform=True, class_color=False, mask_alpha=0.45):
     """
@@ -56,9 +58,12 @@ def prep_display(args, cfg, dets_out, img, h, w, undo_transform=True, class_colo
         h, w, _ = img.shape
     
     with timer.env('Postprocess'):
+        keep_class_idx = TURNIP_LABEL_IDX if args.only_turnip else -1        
         t = postprocess(dets_out, w, h, visualize_lincomb = args.display_lincomb,
                                         crop_masks        = args.crop,
-                                        score_threshold   = args.score_threshold)
+                                        score_threshold   = args.score_threshold,
+                                        keep_class_idx    = keep_class_idx
+                                        )
         if args.cuda:
           torch.cuda.synchronize()
 
