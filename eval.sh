@@ -4,8 +4,8 @@
 # weight_path="./weights/yolact_edge_mobilenetv2_389_4678_tuned_v3.pth"
 # weight_path="./weights/yolact_edge_mobilenetv2_272_3273_tuned_v4.pth"
 
-# weight_path="./weights/yolact_edge_mobilenetv2_416_5000_v5.pth"
-weight_path="./weights/yolact_edge_mobilenetv2_333_6000_v6.pth"
+weight_path="./weights/yolact_edge_mobilenetv2_416_5000_v5.pth"
+# weight_path="./weights/yolact_edge_mobilenetv2_333_6000_v6.pth"
 
 
 
@@ -42,14 +42,16 @@ if [ $run_mode == "vid" ]; then
   --display \
   --cuda=true \
   --disable_tensorrt \
-  --video 2 \
+  --video 0 \
+  --video_multiframe=1 \
   --display_masks=false \
-  --display_bboxes=true \
-  --display_text=true \
+  --display_bboxes=false \
+  --display_text=false \
   --display_size=true \
-  --display_dot=false \
-  --hide_back=false \
+  --display_dot=true \
+  --hide_back=true \
   --display_ajuster=false \
-  --only_turnip=false
+  --only_turnip=false \
+  --zoom_rate=1.3
 fi
 

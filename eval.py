@@ -148,6 +148,8 @@ def parse_args(argv=None):
                         help='show ajuster')
     parser.add_argument('--only_turnip', default=True, type=str2bool,
                         help='検出対象をかぶのみにするかどうか')
+    parser.add_argument('--zoom_rate', default=1.0, type=float,
+                        help='カメラ画像の拡大率')
 
     parser.set_defaults(no_bar=False, display=False, resume=False, output_coco_json=False, output_web_json=False, shuffle=False,
                         benchmark=False, no_sort=False, no_hash=False, mask_proto_debug=False, crop=True, detect=False)
