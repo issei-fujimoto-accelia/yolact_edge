@@ -13,7 +13,7 @@ from yolact_edge.utils import timer
 from .box_utils import crop, sanitize_coordinates, center_size
 
 def postprocess(det_output, w, h, batch_idx=0, interpolation_mode='bilinear',
-                visualize_lincomb=False, crop_masks=True, score_threshold=0, keep_class_idx = 0):
+                visualize_lincomb=False, crop_masks=True, score_threshold=0, keep_class_idx = -1):
     """
     Postprocesses the output of Yolact on testing mode into a format that makes sense,
     accounting for all the possible configuration settings.
@@ -39,13 +39,12 @@ def postprocess(det_output, w, h, batch_idx=0, interpolation_mode='bilinear',
         return [torch.Tensor()] * 4 # Warning, this is 4 copies of the same thing
 
     if score_threshold > 0:
-        ## default
-        # keep = dets['score'] > score_threshold
-
-        ## ここでカブのみを取り出す
-        _s = dets['score'] > score_threshold
-        _c = dets['class'] == keep_class_idx
-        keep = torch.logical_and(_s, _c)
+        if keep_class_idx == -1: ## default
+            keep = dets['score'] > score_threshold
+        else: ## ここでカブのみを取り出す
+            _s = dets['score'] > score_threshold
+            _c = dets['class'] == keep_class_idx
+            keep = torch.logical_and(_s, _c)
         
         for k in dets:
             if k != 'proto':
