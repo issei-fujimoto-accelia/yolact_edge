@@ -15,14 +15,7 @@ from yolact_edge.utils.functions import MovingAverage
 from yolact_edge.utils.augmentations import FastBaseTransform
 from yolact_edge.utils.augmentations import BaseTransform
 
-COLORS = dict(
-    blue=(255, 0, 0),
-    red=(0, 0, 255),
-    green=(0, 255, 0),
-)
-## (255, 0, 165), # puple  
-## (128, 0, 128), # puple
-
+## --- 出力するサイズ ---
 ## full hd
 WIDTH=1920
 HEIGHT=1080
@@ -31,16 +24,49 @@ HEIGHT=1080
 # WIDTH=1280
 # HEIGHT=720
 
-# WIDTH=int(WIDTH/2)
-# HEIGHT=int(HEIGHT/2)
+WIDTH=int(WIDTH/2)
+HEIGHT=int(HEIGHT/2)
+
+WIDTH=1920
+HEIGHT=1080
+## --- 出力するサイズ ---
+
+
+## --- 取り込むカメラのサイズ ---
+## 4:3
+# CAM_WIDTH=640
+# CAM_HEIGHT=480
+
+## 16:9
+CAM_WIDTH=640
+CAM_HEIGHT=360
+## --- 取り込むカメラのサイズ ---
 
 FPS=10
 
+
+COLOR_SET=dict(
+    green=(0, 255, 0),
+    red=(0, 0, 255),
+    blue=(255, 0, 0),
+    pink=(255, 0, 165),
+    puple=(128, 0, 128),
+)
+
+COLORS = dict(
+    small=COLOR_SET["blue"],
+    midium=COLOR_SET["red"],
+    large=COLOR_SET["puple"],
+)
+
+## --- size ---
 # SIZE_SMALL= 5000
 # SIZE_MIDIUM = 20000
 
 SIZE_SMALL= 500
 SIZE_MIDIUM = 1000
+## --- size ---
+
 
 DOT_RAD=10
 
@@ -112,11 +138,11 @@ def prep_display(args, cfg, dets_out, img, h, w, undo_transform=True, class_colo
     def get_color_by_size(mask, on_gpu=True):
         size = torch.count_nonzero(mask)        
         if size < SIZE_SMALL:
-          select_color = "blue"
+          select_color = "small"
         elif size < SIZE_MIDIUM:
-          select_color = "red"
+          select_color = "midium"
         else:  
-          select_color = "green"
+          select_color = "large"
         color = COLORS[select_color]
         if on_gpu:
           color = torch.Tensor(color).to(on_gpu).float() / 255.
@@ -235,6 +261,12 @@ def show_ajuster(vid, zoom_rate):
     cv2.imshow("frame", frame)
 
 def _zoom(frame, rate=1.0):
+    """
+    frame: np.array
+    rate: zoom rate. 1.0より大きい値を期待、1.0より小さい場合うまく動かない
+
+    画面の中央を切り取り拡大する
+    """
     h, w, _ = frame.shape
     crop_h = int((h - h/rate)/2)
     crop_h_to = int(h/rate)
@@ -244,15 +276,14 @@ def _zoom(frame, rate=1.0):
 
 def evalvideo_show_frame(net:Yolact, path:str, cuda: bool, args, cfg):    
     vid = cv2.VideoCapture(int(path))
-    # vid.set(cv2.CAP_PROP_FRAME_WIDTH, WIDTH)
-    # vid.set(cv2.CAP_PROP_FRAME_HEIGHT, HEIGHT)
-    vid.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-    vid.set(cv2.CAP_PROP_FRAME_HEIGHT, 360)
+    vid.set(cv2.CAP_PROP_FRAME_WIDTH, CAM_WIDTH)
+    vid.set(cv2.CAP_PROP_FRAME_HEIGHT, CAM_HEIGHT)
 
     vid.set(cv2.CAP_PROP_FPS, FPS)
     
     print("width: ", vid.get(cv2.CAP_PROP_FRAME_WIDTH))
     print("height: ", vid.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    print("fps: ", vid.get(cv2.CAP_PROP_FPS))
 
     if not vid.isOpened():
         print('Could not open video "%s"' % path)

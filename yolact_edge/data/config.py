@@ -975,7 +975,7 @@ turnip_dataset = dataset_base.copy({
 
     ## for v6 (turnip and hand)
     'class_names': ('turnip', 'hand'),
-    'label_map': {1:1, 2:2} 
+    'label_map': {1:1, 2:2}
 
     ## with codo
     # 'class_names': ('turnip',) + COCO_CLASSES,
