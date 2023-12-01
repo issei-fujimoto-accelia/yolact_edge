@@ -4,8 +4,8 @@
 # weight_path="./weights/yolact_edge_mobilenetv2_389_4678_tuned_v3.pth"
 # weight_path="./weights/yolact_edge_mobilenetv2_272_3273_tuned_v4.pth"
 
-weight_path="./weights/yolact_edge_mobilenetv2_416_5000_v5.pth"
-# weight_path="./weights/yolact_edge_mobilenetv2_333_6000_v6.pth"
+# weight_path="./weights/yolact_edge_mobilenetv2_416_5000_v5.pth"
+weight_path="./weights/yolact_edge_mobilenetv2_333_6000_v6.pth"
 
 
 
@@ -37,7 +37,7 @@ if [ $run_mode == "vid" ]; then
   python3 eval.py \
   --trained_model=$weight_path \
   --score_threshold=0.3 \
-  --top_k=3 \
+  --top_k=10 \
   --config=turnip_mobilenetv2_config \
   --display \
   --cuda=true \
@@ -46,12 +46,12 @@ if [ $run_mode == "vid" ]; then
   --video_multiframe=1 \
   --display_masks=false \
   --display_bboxes=false \
-  --display_text=false \
+  --display_text=true \
   --display_size=true \
   --display_dot=true \
-  --hide_back=true \
+  --hide_back=false \
   --display_ajuster=false \
-  --only_turnip=false \
-  --zoom_rate=1.3
+  --only_turnip=true \
+  --zoom_rate=1.0
 fi
 
