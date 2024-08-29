@@ -17,18 +17,18 @@ from yolact_edge.utils.augmentations import BaseTransform
 
 ## --- 出力するサイズ ---
 ## full hd
-WIDTH=1920
-HEIGHT=1080
+# WIDTH=1920
+# HEIGHT=1080
 
 ## hd
-# WIDTH=1280
-# HEIGHT=720
+WIDTH=1280
+HEIGHT=720
 
 WIDTH=int(WIDTH/2)
 HEIGHT=int(HEIGHT/2)
 
-WIDTH=1920
-HEIGHT=1080
+#WIDTH=1920
+#HEIGHT=1080
 ## --- 出力するサイズ ---
 
 
@@ -43,7 +43,7 @@ CAM_HEIGHT=360
 ## --- 取り込むカメラのサイズ ---
 
 FPS=10
-
+FPS=30
 
 COLOR_SET=dict(
     green=(0, 255, 0),
@@ -145,8 +145,8 @@ def prep_display(args, cfg, dets_out, img, h, w, undo_transform=True, class_colo
           select_color = "large"
         color = COLORS[select_color]
         if on_gpu:
-          color = torch.Tensor(color).to(on_gpu).float() / 255.
-          ## color_cache[on_gpu][color_idx] = color
+            color = torch.Tensor(color).to("cuda").float() / 255.
+        ## color_cache[on_gpu][color_idx] = color
         return color
 
     # First, draw the masks on the GPU where we can do it really fast
@@ -159,8 +159,7 @@ def prep_display(args, cfg, dets_out, img, h, w, undo_transform=True, class_colo
         # Prepare the RGB images for each mask given their color (size [num_dets, h, w, 1])
         # colors = torch.cat([get_color(j, on_gpu=img_gpu.device.index).view(1, 1, 1, 3) for j in range(num_dets_to_consider)], dim=0)
         ## color by size
-        colors = torch.cat([get_color_by_size(masks[j], on_gpu=img_gpu.device.index).view(1, 1, 1, 3) for j in range(num_dets_to_consider)], dim=0)
-        
+        colors = torch.cat([get_color_by_size(masks[j], on_gpu=img_gpu.device.index==0).view(1, 1, 1, 3) for j in range(num_dets_to_consider)], dim=0)
         masks_color = masks.repeat(1, 1, 1, 3) * colors * mask_alpha
 
         # This is 1 everywhere except for 1-mask_alpha where the mask is
