@@ -994,12 +994,12 @@ turnip_dataset_for_resnet = dataset_base.copy({
     'valid_info':   f"{base_dir}/annotations.json",
 
     ## turnip
-    'class_names': ('turnip',),
+    # 'class_names': ('turnip',),
     # 'label_map': {1:1},
 
     ## with hand
-    # 'class_names': ('turnip', 'hand'),
-    # 'label_map': {1:1, 2:2}
+    'class_names': ('turnip', 'hand'),
+    'label_map': {1:1, 2:2}
 })
 
 turnip_restnet101_config = yolact_edge_config.copy({
