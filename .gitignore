@@ -162,3 +162,9 @@ data/calib_images
 .yolact_edge/
 train_images/data_dataset_coco
 train_images/labelme
+train_images/turnip_labeled
+train_images/data_dataset_coco_merged
+train_images/data_dataset_coco_hand
+train_images/data_dataset_coco_0
+train_images/hands
+train_images/hands_resized
