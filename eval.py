@@ -146,6 +146,10 @@ def parse_args(argv=None):
                         help='maskの代わりにドットでかぶの位置を表示')
     parser.add_argument('--display_ajuster', default=True, type=str2bool,
                         help='show ajuster')
+    parser.add_argument('--only_turnip', default=True, type=str2bool,
+                        help='検出対象をかぶのみにするかどうか')
+    parser.add_argument('--zoom_rate', default=1.0, type=float,
+                        help='カメラ画像の拡大率')
 
     parser.set_defaults(no_bar=False, display=False, resume=False, output_coco_json=False, output_web_json=False, shuffle=False,
                         benchmark=False, no_sort=False, no_hash=False, mask_proto_debug=False, crop=True, detect=False)
@@ -941,6 +945,7 @@ def evaluate(net:Yolact, dataset, train_mode=False, train_cfg=None):
             inp, out = args.video.split(':')
             savevideo(net, inp, out)
         else:
+            ## ここに入る
             # evalvideo(net, args.video)
             evalvideo_show_frame(net, args.video, args.cuda, args, cfg)
         return

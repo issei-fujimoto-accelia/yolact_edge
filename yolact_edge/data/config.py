@@ -951,7 +951,7 @@ base_dir = "/content/drive/MyDrive/かぶの画像202303/yolact_dataset/data_dat
 ## base_dir = "./data_dataset_coco_merged" ## for local linux pc
 
 turnip_class_map = COCO_LABEL_MAP.copy()
-turnip_class_map[81] = 81
+turnip_class_map[0] = 1
 
 turnip_dataset = dataset_base.copy({
     'name': 'coco_turnip',
@@ -962,13 +962,20 @@ turnip_dataset = dataset_base.copy({
     'valid_images': base_dir,
     'valid_info':   f"{base_dir}/annotations.json",
 
-    ## only turnip
+    ## for v2
+    # 'class_names': ('turnip',),
+
+    ## for v4
+    # 'class_names':  ('turnip',) + COCO_CLASSES,
+    # 'label_map': turnip_class_map,
+
+    ## for v5
     # 'class_names': ('turnip',),
     # 'label_map': {1:1},
 
-    ## turnip and hand
+    ## for v6 (turnip and hand)
     'class_names': ('turnip', 'hand'),
-    'label_map': {1:1, 2:2} 
+    'label_map': {1:1, 2:2}
 
     ## with codo
     # 'class_names': ('turnip',) + COCO_CLASSES,

@@ -1,8 +1,14 @@
 #!/bin/sh
-## weight_path="./weights/yolact_edge_mobilenetv2_3499_14000.pth"
-## weight_path="./weights/yolact_edge_mobilenetv2_1749_7000.pth"
-weight_path="./weights/yolact_edge_mobilenetv2_276_3319_interrupt.pth"
+# weight_path="./weights/yolact_edge_mobilenetv2_54_800000_raw.pth" 
+# weight_path="./weights/yolact_edge_mobilenetv2_1749_7000_v2.pth"
+# weight_path="./weights/yolact_edge_mobilenetv2_389_4678_tuned_v3.pth"
+# weight_path="./weights/yolact_edge_mobilenetv2_272_3273_tuned_v4.pth"
 
+# weight_path="./weights/yolact_edge_mobilenetv2_416_5000_v5.pth"
+weight_path="./weights/yolact_edge_mobilenetv2_333_6000_v6.pth"
+
+## for video sample
+# weight_path="./raw_weights/yolact_edge_vid_847_50000.pth"
 
 image_path="./sample_images/PXL_20230330_085036313.MP.jp"
 # run_mode="pict"
@@ -14,7 +20,7 @@ if [ $run_mode == "pict" ]; then
   python3 eval.py \
   --trained_model=$weight_path \
   --score_threshold=0.45 \
-  --top_k=3 \
+  --top_k=10 \
   --image=$image_path \
   --config=turnip_mobilenetv2_config \
   --display \
@@ -22,23 +28,33 @@ if [ $run_mode == "pict" ]; then
   --disable_tensorrt
 fi
 
+
+## raw config name
+## yolact_edge_mobilenetv2_config
+
+# --config=turnip_mobilenetv2_config \
+# --config=yolact_edge_resnet50_config \
 ## for video
 if [ $run_mode == "vid" ]; then
   echo "run video"
   python3 eval.py \
+  --score_threshold=0.7 \
   --trained_model=$weight_path \
-  --score_threshold=0.9 \
-  --top_k=3 \
+  --top_k=30 \
   --config=turnip_mobilenetv2_config \
   --display \
   --cuda=true \
   --disable_tensorrt \
   --video 2 \
+  --video_multiframe=1 \
   --display_masks=true \
   --display_bboxes=false \
-  --display_text=true \
-  --display_size=true \
+  --display_text=false \
+  --display_size=false \
+  --display_dot=true \
   --hide_back=false \
-  --display_ajuster=true
+  --display_ajuster=false \
+  --only_turnip=true \
+  --zoom_rate=1.0
 fi
 

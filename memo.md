@@ -26,6 +26,15 @@ https://drive.google.com/drive/folders/110s6xcs1w-31i7g3rDzlu2j8123Me0YT?usp=sha
 --save_interval 100 \
 --save_folder $output_path
 
+### weight memo
+tuned_v2
+tuned_v3 cocoのラベルを追加
+tuned_v4 cocoのラベルに加え、label_mapを設定
+tuned_v5 かぶのみで学習、label_mapを設定
+tuned_v6 かぶと手を学習
+
+現状v6が精度良さそう
+
 
 
 

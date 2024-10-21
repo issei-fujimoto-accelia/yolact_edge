@@ -15,27 +15,62 @@ from yolact_edge.utils.functions import MovingAverage
 from yolact_edge.utils.augmentations import FastBaseTransform
 from yolact_edge.utils.augmentations import BaseTransform
 
-COLORS = dict(
-    blue=(255, 0, 0),
-    red=(0, 0, 255),
+## --- 出力するサイズ ---
+## full hd
+# WIDTH=1920
+# HEIGHT=1080
+
+## hd
+WIDTH=1280
+HEIGHT=720
+
+WIDTH=int(WIDTH/2)
+HEIGHT=int(HEIGHT/2)
+
+#WIDTH=1920
+#HEIGHT=1080
+## --- 出力するサイズ ---
+
+
+## --- 取り込むカメラのサイズ ---
+## 4:3
+# CAM_WIDTH=640
+# CAM_HEIGHT=480
+
+## 16:9
+CAM_WIDTH=640
+CAM_HEIGHT=360
+## --- 取り込むカメラのサイズ ---
+
+FPS=10
+FPS=30
+
+COLOR_SET=dict(
     green=(0, 255, 0),
+    red=(0, 0, 255),
+    blue=(255, 0, 0),
+    pink=(255, 0, 165),
+    puple=(128, 0, 128),
 )
-## (255, 0, 165), # puple  
-## (128, 0, 128), # puple
+
+COLORS = dict(
+    small=COLOR_SET["blue"],
+    midium=COLOR_SET["red"],
+    large=COLOR_SET["puple"],
+)
+
+## --- size ---
+# SIZE_SMALL= 5000
+# SIZE_MIDIUM = 20000
+
+SIZE_SMALL= 500
+SIZE_MIDIUM = 1000
+## --- size ---
 
 
-HEIGHT=1080
-WIDTH=1920
+DOT_RAD=10
 
-HEIGHT=1080/2
-WIDTH=1920/2
-
-FPS=20
-
-SIZE_SMALL= 5000
-SIZE_MIDIUM = 20000
-
-DOT_RAD=30
+TURNIP_LABEL_IDX = 0
 
 color_cache = defaultdict(lambda: {})
 def prep_display(args, cfg, dets_out, img, h, w, undo_transform=True, class_color=False, mask_alpha=0.45):
@@ -49,16 +84,19 @@ def prep_display(args, cfg, dets_out, img, h, w, undo_transform=True, class_colo
             img = img.cuda()
 
     if undo_transform:
-        img_numpy = undo_image_transformation(img, w, h)
+        img_numpy = undo_image_transformation(img, w, h)        
         img_gpu = torch.Tensor(img_numpy).cuda()
     else:
         img_gpu = img / 255.0
         h, w, _ = img.shape
     
     with timer.env('Postprocess'):
+        keep_class_idx = TURNIP_LABEL_IDX if args.only_turnip else -1        
         t = postprocess(dets_out, w, h, visualize_lincomb = args.display_lincomb,
                                         crop_masks        = args.crop,
-                                        score_threshold   = args.score_threshold)
+                                        score_threshold   = args.score_threshold,
+                                        keep_class_idx    = keep_class_idx
+                                        )
         if args.cuda:
           torch.cuda.synchronize()
 
@@ -98,17 +136,17 @@ def prep_display(args, cfg, dets_out, img, h, w, undo_transform=True, class_colo
             return color
         
     def get_color_by_size(mask, on_gpu=True):
-        size = torch.count_nonzero(mask)
+        size = torch.count_nonzero(mask)        
         if size < SIZE_SMALL:
-          select_color = "blue"
+          select_color = "small"
         elif size < SIZE_MIDIUM:
-          select_color = "red"
+          select_color = "midium"
         else:  
-          select_color = "green"
+          select_color = "large"
         color = COLORS[select_color]
-        if on_gpu is not None:
-          color = torch.Tensor(color).to(on_gpu).float() / 255.
-          ## color_cache[on_gpu][color_idx] = color
+        if on_gpu:
+            color = torch.Tensor(color).to("cuda").float() / 255.
+        ## color_cache[on_gpu][color_idx] = color
         return color
 
     # First, draw the masks on the GPU where we can do it really fast
@@ -121,8 +159,7 @@ def prep_display(args, cfg, dets_out, img, h, w, undo_transform=True, class_colo
         # Prepare the RGB images for each mask given their color (size [num_dets, h, w, 1])
         # colors = torch.cat([get_color(j, on_gpu=img_gpu.device.index).view(1, 1, 1, 3) for j in range(num_dets_to_consider)], dim=0)
         ## color by size
-        colors = torch.cat([get_color_by_size(masks[j], on_gpu=img_gpu.device.index).view(1, 1, 1, 3) for j in range(num_dets_to_consider)], dim=0)
-        
+        colors = torch.cat([get_color_by_size(masks[j], on_gpu=img_gpu.device.index==0).view(1, 1, 1, 3) for j in range(num_dets_to_consider)], dim=0)
         masks_color = masks.repeat(1, 1, 1, 3) * colors * mask_alpha
 
         # This is 1 everywhere except for 1-mask_alpha where the mask is
@@ -143,11 +180,13 @@ def prep_display(args, cfg, dets_out, img, h, w, undo_transform=True, class_colo
     # Note, make sure this is a uint8 tensor or opencv will not anti alias text for whatever reason
     img_numpy = (img_gpu * 255).byte().cpu().numpy()
     
-    if args.display_text or args.display_bboxes or args.display_size:
+    if args.display_text or args.display_bboxes or args.display_size or args.display_dot:
         for j in reversed(range(num_dets_to_consider)):
             x1, y1, x2, y2 = boxes[j, :]
-            color = get_color(j)
-            score = scores[j]         
+            # color = get_color(j)
+            color = get_color_by_size(masks[j], on_gpu=False)
+
+            score = scores[j]
 
             if args.display_bboxes:
                 cv2.rectangle(img_numpy, (x1, y1), (x2, y2), color, 1)
@@ -164,19 +203,19 @@ def prep_display(args, cfg, dets_out, img, h, w, undo_transform=True, class_colo
                 # text_color = [255, 255, 255]
                 text_color = [0, 0, 0]
                 
-                cv2.putText(img_numpy, text_str, text_pt, font_face, font_scale, text_color, font_thickness, cv2.LINE_AA)                
-                if args.display_dot:
-                    _x = int((x2 - x1) // 2 + x1)
-                    _y = int((y2 - y1) // 2 + y1)
-                    cv2.circle(img_numpy,
-                        center=(_x, _y),
-                        radius=DOT_RAD,
-                        color=color,
-                        thickness=-1,
-                        lineType=cv2.LINE_4,
-                        shift=0
-                    )
+                cv2.putText(img_numpy, text_str, text_pt, font_face, font_scale, text_color, font_thickness, cv2.LINE_AA)
 
+            if args.display_dot:
+                _x = int((x2 - x1) // 2 + x1)
+                _y = int((y2 - y1) // 2 + y1)                
+                cv2.circle(img_numpy,
+                    center=(_x, _y),
+                    radius=DOT_RAD,
+                    color=color,
+                    thickness=-1,
+                    lineType=cv2.LINE_4,
+                    shift=0
+                )
 
             if args.display_text:
                 _class = cfg.dataset.class_names[classes[j]]
@@ -196,10 +235,9 @@ def prep_display(args, cfg, dets_out, img, h, w, undo_transform=True, class_colo
                 cv2.rectangle(img_numpy, (x1, y1), (x1 + text_w, y1 - text_h - 4), color, -1)
                 cv2.putText(img_numpy, text_str, text_pt, font_face, font_scale, text_color, font_thickness, cv2.LINE_AA)
     
-    if args.display_ajuster:        
-        _h, _w, _ = img_numpy.shape
-        cv2.circle(img_numpy, (20, 20), 40, COLORS["red"], thickness=-1)
-
+    # if args.display_ajuster:
+    #    _h, _w, _ = img_numpy.shape
+    #    cv2.circle(img_numpy, (20, 20), 40, COLORS["red"], thickness=-1)
     return img_numpy
 
 
@@ -209,7 +247,7 @@ class CustomDataParallel(torch.nn.DataParallel):
         # Note that I don't actually want to convert everything to the output_device
         return sum(outputs, [])
 
-def show_ajuster(vid):
+def show_ajuster(vid, zoom_rate):
     ret, frame = vid.read()
     _h, _w, _ = frame.shape
     _r = 40
@@ -218,17 +256,33 @@ def show_ajuster(vid):
     cv2.circle(frame, (0+_r, 0+_r), _r, COLORS["red"], thickness=-1) ## 左上     
     cv2.circle(frame, (_w-_r, _h-_r), _r, COLORS["red"], thickness=-1) ## 右下
     cv2.circle(frame, (_r, _h-_r), _r, COLORS["red"], thickness=-1) ## 左下
+    frame = _zoom(frame, zoom_rate)
     cv2.imshow("frame", frame)
 
+def _zoom(frame, rate=1.0):
+    """
+    frame: np.array
+    rate: zoom rate. 1.0より大きい値を期待、1.0より小さい場合うまく動かない
+
+    画面の中央を切り取り拡大する
+    """
+    h, w, _ = frame.shape
+    crop_h = int((h - h/rate)/2)
+    crop_h_to = int(h/rate)
+    crop_w = int((w - w/rate)/2)
+    crop_w_to = int(w/rate)
+    return cv2.resize(frame[crop_h:crop_h_to, crop_w:crop_w_to, :], dsize = (WIDTH, HEIGHT))
 
 def evalvideo_show_frame(net:Yolact, path:str, cuda: bool, args, cfg):    
     vid = cv2.VideoCapture(int(path))
-    vid.set(cv2.CAP_PROP_FRAME_WIDTH, WIDTH)
-    vid.set(cv2.CAP_PROP_FRAME_HEIGHT, HEIGHT)
-    vid.set(cv2.CAP_PROP_FPS, FPS)
+    vid.set(cv2.CAP_PROP_FRAME_WIDTH, CAM_WIDTH)
+    vid.set(cv2.CAP_PROP_FRAME_HEIGHT, CAM_HEIGHT)
 
-    print("width: ", cv2.CAP_PROP_FRAME_WIDTH)
-    print("height: ", cv2.CAP_PROP_FRAME_HEIGHT)
+    vid.set(cv2.CAP_PROP_FPS, FPS)
+    
+    print("width: ", vid.get(cv2.CAP_PROP_FRAME_WIDTH))
+    print("height: ", vid.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    print("fps: ", vid.get(cv2.CAP_PROP_FPS))
 
     if not vid.isOpened():
         print('Could not open video "%s"' % path)
@@ -262,7 +316,7 @@ def evalvideo_show_frame(net:Yolact, path:str, cuda: bool, args, cfg):
 
     def get_next_frame(vid):
         return [vid.read()[1] for _ in range(args.video_multiframe)]
-
+        
     def transform_frame(frames):
         with torch.no_grad():
           if cuda:
@@ -297,7 +351,7 @@ def evalvideo_show_frame(net:Yolact, path:str, cuda: bool, args, cfg):
 
     def prep_frame(inp):
         with torch.no_grad():
-            frame, preds = inp
+            frame, preds = inp            
             return prep_display(args, cfg, preds, frame, None, None, undo_transform=False, class_color=True, mask_alpha=1)
 
     frame_buffer = Queue()
@@ -321,10 +375,11 @@ def evalvideo_show_frame(net:Yolact, path:str, cuda: bool, args, cfg):
                     video_frame_times.add(next_time - last_time)
                     video_fps = 1 / video_frame_times.get_avg()
                 # cv2.imshow(path, frame_buffer.get())
-                cv2.imshow("frame", frame_buffer.get())
+                _resized_frame = _zoom(frame_buffer.get(), args.zoom_rate)
+                cv2.imshow("frame", _resized_frame)
                 last_time = next_time
             if args.display_ajuster:
-                show_ajuster(vid)
+                show_ajuster(vid, args.zoom_rate)
                 
             if cv2.waitKey(1) == 27: # Press Escape to close
                 running = False
