@@ -158,6 +158,7 @@ def parse_args(argv=None):
     
     if args.seed is not None:
         random.seed(args.seed)
+    return args
 
 iou_thresholds = [x / 100 for x in range(50, 100, 5)]
 coco_cats = {} # Call prep_coco_cats to fill this

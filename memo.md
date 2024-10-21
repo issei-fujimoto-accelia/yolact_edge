@@ -86,6 +86,13 @@ python labelme/examples/instance_segmentation/labelme2coco.py \
 resize_images data_dataset_coco --labels classes.txt 
 ```
 
-
 参考: 
 https://nutritionfoodtech.com/2022/11/02/%e8%bb%bd%e9%87%8f%e3%81%aa%e3%82%a4%e3%83%b3%e3%82%b9%e3%82%bf%e3%83%b3%e3%82%b9%e3%82%bb%e3%82%b0%e3%83%a1%e3%83%b3%e3%83%86%e3%83%bc%e3%82%b7%e3%83%a7%e3%83%b3yolact-edge%e3%82%92%e3%82%ab%e3%82%b9/?
+
+## 位置合わせ
+倍率を求める。
+
+- 長さ20cmのラインをカメラで撮影する
+- ラインをプロジェクターで投影し、ラインの長さ計測
+- 倍率=実際のラインの長さ(20cm))/投影されたラインの長さ
+- 投影映像を倍率分拡大する
