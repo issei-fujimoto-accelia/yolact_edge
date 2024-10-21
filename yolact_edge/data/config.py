@@ -977,6 +977,22 @@ turnip_dataset = dataset_base.copy({
     
 })
 
+turnip_restnet101_config = yolact_edge_config.copy({
+    'name': 'yolact_edge_resnet101',
+    'dataset': turnip_dataset,
+    'num_classes': len(turnip_dataset.class_names) + 1,
+
+    'backbone': resnet101_backbone.copy({
+        'selected_layers': list(range(1, 4)),
+        'use_pixel_scales': True,
+        'preapply_sqrt': False,
+        'use_square_anchors': True, # This is for backward compatability with a bug
+
+        'pred_aspect_ratios': [ [[1, 1/2, 2]] ]*5,
+        'pred_scales': [[24], [48], [96], [192], [384]],
+    }),
+})
+
 turnip_mobilenetv2_config = yolact_edge_config.copy({
     'name': 'yolact_edge_mobilenetv2',
     'dataset': turnip_dataset,
