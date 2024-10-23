@@ -162,6 +162,7 @@ def parse_args(argv=None):
     
     if args.seed is not None:
         random.seed(args.seed)
+    return args
 
 iou_thresholds = [x / 100 for x in range(50, 100, 5)]
 coco_cats = {} # Call prep_coco_cats to fill this
@@ -790,7 +791,7 @@ def evalvideo(net:Yolact, path:str, cuda: bool):
     # For each frame the sequence of functions it needs to go through to be processed (in reversed order)
     sequence = [prep_frame, eval_network, transform_frame]
     n_threads = len(sequence) + args.video_multiframe + 2
-    n_threads = 4
+    # n_threads = 4
     pool = ThreadPool(processes=n_threads)
     print("Number of threads: {}".format(n_threads))
     pool.apply_async(play_video)
@@ -1234,7 +1235,7 @@ if __name__ == '__main__':
         args.trained_model = SavePath.get_interrupt('weights/')
     elif args.trained_model == 'latest':
         args.trained_model = SavePath.get_latest('weights/', cfg.name)
-
+    print("args.trained_model", args.trained_model)
     if args.config is None:
         model_path = SavePath.from_str(args.trained_model)
         # TODO: Bad practice? Probably want to do a name lookup instead.
