@@ -948,7 +948,8 @@ cfg = yolact_edge_config.copy()
 ## base_dir = "/content/drive/MyDrive/かぶの画像202303/yolact_dataset/data_dataset_coco" ## 複数のカブを別々のグループにしたもの、v1
 base_dir = "/content/drive/MyDrive/かぶの画像202303/yolact_dataset/data_dataset_coco_merged" ## 撮影した画像に、過去に撮影したものやネットにある画像を少し混ぜたデータセット
 base_dir = "/content/drive/MyDrive/かぶの画像202303/yolact_dataset/data_dataset_coco_merged_v2" ## data_dataset_coco_mergedに対して、水槽に浮かべたカブと紙で作ったカブを追加
-base_dir = "/content/drive/MyDrive/かぶの画像202303/yolact_dataset/data_dataset_coco_hand" ## mergedに手の画像を追加
+base_dir = "/content/drive/MyDrive/かぶの画像202303/yolact_dataset/data_dataset_coco_merged_v3_front_only" ## data_dataset_coco_merged_v2に対して、重なったカブがある場合、手前のカブのみをセグメンテーションするように作成
+# base_dir = "/content/drive/MyDrive/かぶの画像202303/yolact_dataset/data_dataset_coco_hand" ## mergedに手の画像を追加
 ## base_dir = "./data_dataset_coco_merged" ## for local linux pc
 
 turnip_class_map = COCO_LABEL_MAP.copy()
@@ -975,8 +976,8 @@ turnip_dataset = dataset_base.copy({
     'label_map': {1:1},
 
     ## for v6 (turnip and hand)
-    'class_names': ('turnip', 'hand'),
-    'label_map': {1:1, 2:2}
+    # 'class_names': ('turnip', 'hand'),
+    # 'label_map': {1:1, 2:2}
 
     ## with codo
     # 'class_names': ('turnip',) + COCO_CLASSES,
