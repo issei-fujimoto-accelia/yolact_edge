@@ -4,8 +4,13 @@
 # weight_path="./weights/yolact_edge_mobilenetv2_389_4678_tuned_v3.pth"
 # weight_path="./weights/yolact_edge_mobilenetv2_272_3273_tuned_v4.pth"
 
-# weight_path="./weights/yolact_edge_mobilenetv2_416_5000_v5.pth"
-weight_path="./weights/yolact_edge_mobilenetv2_333_6000_v6.pth"
+# weight_path="./weights/yolact_edge_mobilenetv2_416_5000_v5.pth" ## OK (前回まで使ってたやつ)
+# weight_path="./weights/yolact_edge_mobilenetv2_333_6000_v6.pth"
+
+# weight_path="./weights/yolact_edge_resnet101_99_2000_v7_1.pth" ## 重なりあり、手なし (これが良さそう)
+# weight_path="./weights/yolact_edge_resnet101_361_3255_v7_2.pth" ## 重なりあり、手あり
+weight_path="./weights/yolact_edge_resnet101_244_1711_v8.pth" ## 重なりなし、手なし (これが良さそう)
+
 
 ## for video sample
 # weight_path="./raw_weights/yolact_edge_vid_847_50000.pth"
@@ -28,33 +33,35 @@ if [ $run_mode == "pict" ]; then
   --disable_tensorrt
 fi
 
-
+# 30 ~ (50あれば余裕)
 ## raw config name
 ## yolact_edge_mobilenetv2_config
 
-# --config=turnip_mobilenetv2_config \
+# --config=turnip_mobilenetv2_config \  
 # --config=yolact_edge_resnet50_config \
+# --config=turnip_restnet101_config \
 ## for video
 if [ $run_mode == "vid" ]; then
   echo "run video"
   python3 eval.py \
   --score_threshold=0.7 \
   --trained_model=$weight_path \
-  --top_k=30 \
-  --config=turnip_mobilenetv2_config \
+  --top_k=100 \
+  --config=turnip_restnet101_config \
   --display \
   --cuda=true \
   --disable_tensorrt \
-  --video 2 \
+  --video 0 \
   --video_multiframe=1 \
   --display_masks=true \
-  --display_bboxes=false \
+  --display_bboxes=true \
   --display_text=false \
-  --display_size=false \
+  --display_size=true \
   --display_dot=true \
-  --hide_back=false \
+  --hide_back=false  \
   --display_ajuster=false \
   --only_turnip=true \
-  --zoom_rate=1.0
+  --zoom_rate=1.00 \
+  --use_fp16_tensorrt
 fi
 
