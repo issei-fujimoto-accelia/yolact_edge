@@ -16,16 +16,16 @@ from yolact_edge.utils.augmentations import FastBaseTransform
 from yolact_edge.utils.augmentations import BaseTransform
 
 ## --- 出力するサイズ ---
-## full hd
-# WIDTH=1920
-# HEIGHT=1080
+## full hd 16:9
+WIDTH=1920
+HEIGHT=1080 - 100 ## プロジェクターだと高さがカットされてる
 
-## hd
-WIDTH=1280
-HEIGHT=720
+## hd 16:9
+# WIDTH=1280
+# HEIGHT=720
 
-WIDTH=int(WIDTH/2)
-HEIGHT=int(HEIGHT/2)
+# WIDTH=int(WIDTH/2)
+# HEIGHT=int(HEIGHT/2)
 
 #WIDTH=1920
 #HEIGHT=1080
@@ -43,7 +43,7 @@ CAM_HEIGHT=360
 ## --- 取り込むカメラのサイズ ---
 
 FPS=10
-FPS=30
+FPS=1
 
 COLOR_SET=dict(
     green=(0, 255, 0),
@@ -54,21 +54,38 @@ COLOR_SET=dict(
 )
 
 COLORS = dict(
-    small=COLOR_SET["blue"],
-    midium=COLOR_SET["red"],
-    large=COLOR_SET["puple"],
+    L4=COLOR_SET["green"],
+    L3=COLOR_SET["red"],
+    L2=COLOR_SET["blue"],
+    L=COLOR_SET["pink"],
+    M=COLOR_SET["puple"],
 )
 
 ## --- size ---
 # SIZE_SMALL= 5000
 # SIZE_MIDIUM = 20000
 
-SIZE_SMALL= 500
-SIZE_MIDIUM = 1000
+# SIZE_SMALL= 500
+# SIZE_MIDIUM = 1000
+# SIZE_L4=else
+SIZE_L3=1600
+SIZE_L2=1300
+SIZE_L=1200
+SIZE_M=1000
 ## --- size ---
 
+## -- convert to ---
 
-DOT_RAD=10
+## check_cam.pyで４点を選択する
+# PTS = [[84, 35], [502, 49], [507, 280], [73, 279]]
+PTS = [[141, 82], [424, 88], [431, 243], [138, 245]]
+PTS = [[179, 78], [501, 53], [518, 238], [187, 254]]
+
+
+## -- convert to ---
+
+
+DOT_RAD=5
 
 TURNIP_LABEL_IDX = 0
 
@@ -136,13 +153,17 @@ def prep_display(args, cfg, dets_out, img, h, w, undo_transform=True, class_colo
             return color
         
     def get_color_by_size(mask, on_gpu=True):
-        size = torch.count_nonzero(mask)        
-        if size < SIZE_SMALL:
-          select_color = "small"
-        elif size < SIZE_MIDIUM:
-          select_color = "midium"
+        size = torch.count_nonzero(mask)
+        if size < SIZE_M:
+          select_color = "M"
+        elif size < SIZE_L:
+          select_color = "L"
+        elif size < SIZE_L2:
+            select_color = "L2"
+        elif size < SIZE_L3:
+            select_color = "L3"
         else:  
-          select_color = "large"
+          select_color = "L4"
         color = COLORS[select_color]
         if on_gpu:
             color = torch.Tensor(color).to("cuda").float() / 255.
@@ -317,7 +338,24 @@ def evalvideo_show_frame(net:Yolact, path:str, cuda: bool, args, cfg):
     def get_next_frame(vid):
         return [vid.read()[1] for _ in range(args.video_multiframe)]
         
+    def convert(frame):
+        """
+        四角形を長方形に変換する
+        """
+        h, w, _ = frame.shape
+        from_pts = np.array(PTS)
+        dst_pts = np.array([
+            [0,0],
+            [w - 1, 0],
+            [w - 1, h - 1],
+            [0, h - 1]], dtype="float32" 
+        )
+        M = cv2.getPerspectiveTransform(from_pts.astype("float32"), dst_pts)
+        t_frame = cv2.warpPerspective(frame, M, (w, h))
+        return t_frame
+
     def transform_frame(frames):
+        frames = [convert(frame) for frame in frames]
         with torch.no_grad():
           if cuda:
             frames = [torch.from_numpy(frame).cuda().float() for frame in frames]
@@ -376,6 +414,7 @@ def evalvideo_show_frame(net:Yolact, path:str, cuda: bool, args, cfg):
                     video_fps = 1 / video_frame_times.get_avg()
                 # cv2.imshow(path, frame_buffer.get())
                 _resized_frame = _zoom(frame_buffer.get(), args.zoom_rate)
+                _resized_frame = cv2.resize(_resized_frame, dsize = (WIDTH, HEIGHT))
                 cv2.imshow("frame", _resized_frame)
                 last_time = next_time
             if args.display_ajuster:
@@ -412,7 +451,7 @@ def evalvideo_show_frame(net:Yolact, path:str, cuda: bool, args, cfg):
     # For each frame the sequence of functions it needs to go through to be processed (in reversed order)
     sequence = [prep_frame, eval_network, transform_frame]
     n_threads = len(sequence) + args.video_multiframe + 2
-    n_threads = 4
+    # n_threads = 4
     pool = ThreadPool(processes=n_threads)
     print("Number of threads: {}".format(n_threads))
     pool.apply_async(play_video)
