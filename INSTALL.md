@@ -26,7 +26,7 @@
 
  - Install some other packages:
    ```Shell
-   # Cython needs to be installed before pycocotools
+   # Cython needs to 
    pip install cython
    pip install opencv-python pillow matplotlib
    pip install git+https://github.com/haotian-liu/cocoapi.git#"egg=pycocotools&subdirectory=PythonAPI"
