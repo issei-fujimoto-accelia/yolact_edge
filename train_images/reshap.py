@@ -7,14 +7,14 @@ import os
 
 from PIL import Image
 
-
+input_files = "./images/*.jpg"
 output_dir = "./resize_images"
  
-if not os.path.exists(output_dir):    
+if not os.path.exists(output_dir):
     os.makedirs(output_dir)
 
 
-files = glob.glob("./images/*.jpg")
+files = glob.glob(input_files)
 for i, img_file in enumerate(files):
     img = Image.open(img_file)
     (width, height) = (img.width // 3, img.height // 3)  
