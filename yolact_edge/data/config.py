@@ -950,8 +950,8 @@ base_dir = "/content/drive/MyDrive/かぶの画像202303/yolact_dataset/data_dat
 base_dir = "/content/drive/MyDrive/かぶの画像202303/yolact_dataset/data_dataset_coco_merged_v2" ## data_dataset_coco_mergedに対して、水槽に浮かべたカブと紙で作ったカブを追加
 base_dir = "/content/drive/MyDrive/かぶの画像202303/yolact_dataset/data_dataset_coco_merged_v3_front_only" ## data_dataset_coco_merged_v2に対して、重なったカブがある場合、手前のカブのみをセグメンテーションするように作成
 # base_dir = "/content/drive/MyDrive/かぶの画像202303/yolact_dataset/data_dataset_coco_hand" ## mergedに手の画像を追加
-# base_dir = "/content/drive/MyDrive/かぶの画像202303/yolact_dataset/data_dataset_coco_real_angle" ## v9 実際の画角のみの画像
-base_dir = "/content/drive/MyDrive/かぶの画像202303/yolact_dataset/data_dataset_coco_real_angle_and_ideal" ## v10 実際の画角のみの画像 + 理想の重ねたカブの画像
+base_dir = "/content/drive/MyDrive/かぶの画像202303/yolact_dataset/data_dataset_coco_real_angle" ## v9 実際の画角のみの画像
+# base_dir = "/content/drive/MyDrive/かぶの画像202303/yolact_dataset/data_dataset_coco_real_angle_and_ideal" ## v10 実際の画角のみの画像 + 理想の重ねたカブの画像
 ## base_dir = "./data_dataset_coco_merged" ## for local linux pc
 
 turnip_class_map = COCO_LABEL_MAP.copy()
