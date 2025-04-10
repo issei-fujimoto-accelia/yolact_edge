@@ -1184,6 +1184,8 @@ base_dir = "/content/drive/MyDrive/かぶの画像202303/yolact_dataset/data_dat
 ## base_dir = "./data_dataset_coco_merged" ## for local linux pc
 
 base_dir = "/content/drive/MyDrive/かぶの画像202303/yolact_dataset/data_dataset_coco_202502"  ## v11 実際の画角v2
+base_dir = "/content/drive/MyDrive/かぶの画像202303/yolact_dataset/data_dataset_coco_202502_v2"  ## v11_v2 実際の画角
+# base_dir = "/content/drive/MyDrive/かぶの画像202303/yolact_dataset/data_dataset_coco_202502_v3"  ## v11_v3 実際の画角
 valid_dir = "/content/drive/MyDrive/かぶの画像202303/yolact_dataset/data_dataset_coco_real_angle"  ## v9 実際の画角のみの画像
 
 turnip_class_map = COCO_LABEL_MAP.copy()
