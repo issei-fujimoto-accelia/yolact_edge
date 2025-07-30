@@ -1,3 +1,6 @@
+
+#!/usr/bin/env python3
+   # -*- coding: utf-8 -*-
 """
 - windowをもう１つ、カメラ映像を表示
 - 説明書のページ作る
@@ -21,7 +24,9 @@ from tkinter import colorchooser, messagebox
 import cv2
 from PIL import Image, ImageTk
 import threading
-from queue import Queue
+import multiprocessing
+from multiprocessing import Array
+import ctypes
 
 IMG_WIDTH = 600
 IMG_HEIGHT = int(IMG_WIDTH * 9 / 16)  # 16:9比率に調整
@@ -32,22 +37,34 @@ class CameraApp:
         self.root = root
         self.root.title("Camera App with Tkinter and OpenCV")
         self.root.geometry("1200x800")
-
         self.root.resizable(True, True)
+        self.font = ("Noto Sans CJK JP", 18)
+
+        _byte_len = 10
+        self.colorArray = Array(ctypes.c_char, 5*_byte_len)
+        for i, v in enumerate(["red", "red", "red", "red", "red"]):
+            bytes = v.encode("utf-8")
+            bytes = bytes.ljust(_byte_len, b"\x00")
+            for j in range(len(bytes)):
+                self.colorArray[j+i*_byte_len]= bytes[j]
+
+        self.sizeArray = Array("i", [500, 600, 700, 800])
+        self.load_colors_sizes()
+
+        self.pointArray = Array("i", [0,0, 0,0, 0,0, 0,0])
+        self.load_points()
 
         self.current_page = "run_app"
         self.init_base_frame()
-        
-        self.capture = cv2.VideoCapture(0)
-        self.run_app_page = RunAppPage(self.left_frame, self.right_frame, self.capture, self.root)
-        # self.color_setting_page = ColorSettingPage(self.left_frame, self.right_frame, cap, root)
-        # self.point_setting_page = PointSettingPage(self.left_frame, self.right_frame, cap, root)
+        self.preview_frame = multiprocessing.Queue()
+        # self.capture = cv2.VideoCapture(0)
+        self.run_app_page = RunAppPage(self.left_frame, self.right_frame, self.root, self.preview_frame)
+        # self.color_setting_page = ColorSettingPage(self.left_frame, self.right_frame, cap, root, self.set_colors, self.set_sizes)
+        # self.point_setting_page = PointSettingPage(self.left_frame, self.right_frame, cap, root, self.set_points)
         self.run_app_page.create_page()
 
-        self.previw_frame = Queue()
-  
     def set_frame(self, frame):
-        self.previw_frame.put(frame)
+        self.preview_frame.put(frame)
 
     def init_base_frame(self):
         self.header = tk.Frame(self.root, bg="yellow", height=0)
@@ -66,14 +83,14 @@ class CameraApp:
         self.left_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
         self.right_frame.grid(row=1, column=1, sticky="nsew", padx=10, pady=10)
 
-        root.grid_rowconfigure(1, weight=1)  # 左右のフレームの高さを調整
-        root.grid_columnconfigure(0, weight=1)  # 左側のフレーム
-        root.grid_columnconfigure(1, weight=0)  # 右側のフレーム
+        self.root.grid_rowconfigure(1, weight=1)  # 左右のフレームの高さを調整
+        self.root.grid_columnconfigure(0, weight=1)  # 左側のフレーム
+        self.root.grid_columnconfigure(1, weight=0)  # 右側のフレーム
 
         self.top_page_button = tk.Button(self.footer, text="TOP", command=self.to_app_run, height=10)
-        self.setting1 = tk.Button(self.footer, text="色とサイズの設定", command=self.to_color_settings, height=5)
-        self.setting2 = tk.Button(self.footer, text="位置合わせの設定", command=self.to_point_settings, height=5)
-        self.setting3 = tk.Button(self.footer, text="TOPページ", command=self.to_app_run, height=5)
+        self.setting1 = tk.Button(self.footer, text=u"色とサイズの設定", command=self.to_color_settings, height=5, font=self.font)
+        self.setting2 = tk.Button(self.footer, text=u"位置合わせの設定", command=self.to_point_settings, height=5, font=self.font)
+        self.setting3 = tk.Button(self.footer, text=u"TOPページ", command=self.to_app_run, height=5)
         self.setting1.grid(row=0, column=0, sticky="ns")
         self.setting2.grid(row=0, column=1, sticky="ns")
         self.setting3.grid(row=0, column=2, sticky="ns")
@@ -81,19 +98,19 @@ class CameraApp:
     def to_app_run(self):
         self.current_page = "app_run"
         self.init_base_frame()
-        self.run_app_page = RunAppPage(self.left_frame, self.right_frame, self.cap, self.root)
+        self.run_app_page = RunAppPage(self.left_frame, self.right_frame, self.preview_frame, self.root)
         self.run_app_page.create_page()
         
     def to_color_settings(self):
         self.current_page = "color_settings"
         self.init_base_frame()
-        color_setting_page = ColorSettingPage(self.left_frame, self.right_frame, self.cap, self.root)
+        color_setting_page = ColorSettingPage(self.left_frame, self.right_frame, self.preview_frame, self.root, self.set_colors, self.set_sizes)
         color_setting_page.create_page()
         
     def to_point_settings(self):
         self.current_page = "point_setting"
         self.init_base_frame()
-        point_setting_page = PointSettingPage(self.left_frame, self.right_frame, self.cap, self.root)
+        point_setting_page = PointSettingPage(self.left_frame, self.right_frame, self.preview_frame, self.root, self.set_points)
         point_setting_page.create_page()
         
     # def toggle_page(self):
@@ -110,16 +127,54 @@ class CameraApp:
     #         self.current_page = 1
 
     def stop(self):
-        self.capture.release()
+        # self.capture.release()
         self.root.destroy()
 
+    def load_colors_sizes(self):
+        if os.path.exists("color_settings.json"):
+            try:
+                with open("color_settings.json", "r") as f:
+                    settings = json.load(f)
+                    for i in range(5):
+                        if f"input_{i+1}" in settings:
+                            self.sizeArray[i] = settings[f"input_{i+1}"].get("value", "")
+                            self.colorArray[i] = settings[f"input_{i+1}"].get("color", "#FFFFFF")
+            except Exception as e:
+                pass
+
+    def set_colors(self, colors):
+        for i in 5:
+            self.colorArray[i] = colors[i]
+
+    def set_sizes(self, sizes):
+        for i in 5:
+            self.sizeArray[i] = sizes[i]
+
+
+    def load_points(self):
+        points = ["lu","ru", "rb", "lb"]
+        _cood_text = ["左上", "右上", "右下", "左下"]
+        if os.path.exists("point_settings.json"):
+            try:
+                with open("point_settings.json", "r") as f:
+                    settings = json.load(f)
+                    for i, v in enumerate(points):
+                         self.pointArray[i] = [settings[v]["x"], settings[v]["y"]]
+            except Exception as e:
+                pass
+
+    def set_points(self, points):
+        for i in range(4):            
+            self.pointArray[i*2] = points[i][0]
+            self.pointArray[(i*2)+1] = points[i][1]
+
 class RunAppPage():
-    def __init__(self, left, right, capture, root):
+    def __init__(self, left, right, root, frame):
         self.left = left
         self.right = right
-        self.capture = capture
+        self.preview_frame = frame
         self.root = root
-    
+
     def create_page(self):
         # # self.page_frame.grid(row=1, column=0, rowspan=2, padx=10, pady=10, sticky="nsew")
         # self.page_frame.grid(columnspan=3, sticky="nsew")
@@ -150,8 +205,8 @@ class RunAppPage():
         pass
 
     def update_frame(self):
-        if self.previw_frame.size() > 1:
-            frame = self.previw_frame.get()
+        if not self.preview_frame.empty():
+            frame = self.preview_frame.get()
             # OpenCVのBGRをRGBに変換
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             _width = int(self.root.winfo_width()/2)
@@ -167,14 +222,19 @@ class RunAppPage():
             self.camera_label.image = image_tk
             
         # 10msごとにフレームを更新
-        self.camera_label.after(1000, self.update_frame)
+        self.camera_label.after(200, self.update_frame)
 
 class ColorSettingPage():
-    def __init__(self, left, right, capture, root):
+    def __init__(self, left, right, preview_frame, root, set_colors, set_sizes):
         self.left = left
         self.right = right
-        self.capture = capture
+        # self.capture = capture
         self.root = root
+
+        self.set_colors = set_colors
+        self.set_sizes = set_sizes
+        self.preview_frame = preview_frame
+
         self.font = ("", 18)
         self.click_points = []
     
@@ -243,9 +303,8 @@ class ColorSettingPage():
         self.update_frame()
         
     def update_frame(self):
-        ret, frame = self.capture.read()
-        if ret:
-            # OpenCVのBGRをRGBに変換
+        if not self.preview_frame.empty():
+            frame = self.preview_frame.get()
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             _width = int(self.root.winfo_width()/2)
             height = int(_width * 9 / 16)
@@ -260,7 +319,7 @@ class ColorSettingPage():
             self.camera_label.image = image_tk
             
         # 10msごとにフレームを更新
-        self.camera_label.after(1000, self.update_frame)
+        self.camera_label.after(200, self.update_frame)
 
     def update_display(self, event):
         # 数値入力ボックスから数値を取得し、次のラベルに表示
@@ -276,8 +335,6 @@ class ColorSettingPage():
         if color_code:
             self.color_labels[index].config(bg=color_code)
             self.color_buttons[index].config(bg=color_code)
-            
-
 
     def save_size_settings(self):
         # 設定の保存（数値と色）
@@ -287,7 +344,11 @@ class ColorSettingPage():
             color = self.color_labels[i].cget("bg")
             settings[f"input_{i+1}"] = {"value": value, "color": color}
 
-        try:
+        sizes = [self.input_entries[i].get() for i in range(5)]
+        colors = [self.color_labels[i].cget("bg") for i in range(5)]
+        self.set_sizes(sizes)
+        self.set_colors(colors)
+        try:            
             with open("size_settings.json", "w") as f:
                 json.dump(settings, f, indent=4)
             messagebox.showinfo("Success", "保存しました")
@@ -297,9 +358,9 @@ class ColorSettingPage():
             
     def load_size_settings(self):
         # 設定の読み込み（JSON）
-        if os.path.exists("size_settings.json"):
+        if os.path.exists("color_settings.json"):
             try:
-                with open("size_settings.json", "r") as f:
+                with open("color_settings.json", "r") as f:
                     settings = json.load(f)
                     for i in range(5):
                         if f"input_{i+1}" in settings:
@@ -311,12 +372,13 @@ class ColorSettingPage():
                 messagebox.showerror("Error", f"Failed to load settings: {e}")
 
 class PointSettingPage():
-    def __init__(self, left, right, capture, root):
+    def __init__(self, left, right, preview_frame, root, set_points):
         self.left = left
         self.right = right
-        self.capture = capture
+        self.preview_frame = preview_frame
         self.root = root
         
+        self.set_points = set_points
         self.font = ("", 18)
         self.click_points = []
         _cood_text = ["左上", "右上", "右下", "左下"]
@@ -364,8 +426,8 @@ class PointSettingPage():
     
 
     def update_frame(self):
-        ret, frame = self.capture.read()
-        if ret:
+        if not self.preview_frame.empty():
+            frame = self.preview_frame.get()
             # OpenCVのBGRをRGBに変換
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             _width = int(self.root.winfo_width()/2)
@@ -382,7 +444,7 @@ class PointSettingPage():
             self.camera_label.image = image_tk
             
         # 10msごとにフレームを更新
-        self.camera_label.after(500, self.update_frame)
+        self.camera_label.after(200, self.update_frame)
 
     def clear_points(self):
         # クリックしたポイントをリセット

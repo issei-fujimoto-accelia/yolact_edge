@@ -911,7 +911,7 @@ def savevideo(net:Yolact, in_path:str, out_path:str):
     print()
 
 
-def evaluate(net:Yolact, dataset, train_mode=False, train_cfg=None, set_frame=None):
+def evaluate(net:Yolact, dataset, train_mode=False, train_cfg=None, set_frame=None, sizeArray = None, colorArray = None, pointArray = None):
     net.detect.use_fast_nms = args.fast_nms
     cfg.mask_proto_debug = args.mask_proto_debug
 
@@ -947,7 +947,7 @@ def evaluate(net:Yolact, dataset, train_mode=False, train_cfg=None, set_frame=No
         else:
             ## ここに入る
             # evalvideo(net, args.video)
-            evalvideo_show_frame(net, args.video, args.cuda, args, cfg, set_frame)
+            evalvideo_show_frame(net, args.video, args.cuda, args, cfg, set_frame=set_frame, sizeArray = sizeArray, colorArray = colorArray, pointArray = pointArray)
         return
 
 
@@ -1225,7 +1225,7 @@ def print_maps(all_maps):
 
 
 
-def run(argv=None, set_frame):
+def _run(argv=None, set_frame=None, sizeArray = None, colorArray = None, pointArray = None):
     parse_args(argv)
 
     if args.config is not None:
@@ -1300,8 +1300,15 @@ def run(argv=None, set_frame):
         if args.cuda:
             net = net.cuda()
 
-        evaluate(net, dataset, set_frame)
+        evaluate(net, dataset, set_frame=set_frame, sizeArray=sizeArray, colorArray=colorArray, pointArray=pointArray)
 
+
+def run(argv=None, set_frame=None, event=None, sizeArray = None, colorArray = None, pointArray = None):
+    try:
+        _run(argv, set_frame=set_frame, sizeArray=sizeArray, colorArray=colorArray, pointArray=pointArray)
+    except Exception as e:
+        print("child process error", e)
+        event.set()
 
 if __name__ == '__main__':
     run()

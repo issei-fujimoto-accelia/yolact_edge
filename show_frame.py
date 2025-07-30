@@ -3,6 +3,7 @@ import cv2
 import time
 
 from multiprocessing.pool import ThreadPool
+# from multiprocessing import Queue
 from queue import Queue
 import numpy as np
 from collections import defaultdict
@@ -90,6 +91,35 @@ DOT_RAD=5
 TURNIP_LABEL_IDX = 0
 
 color_cache = defaultdict(lambda: {})
+def override_global_color_size_pts(sizes, colors, points):
+    global COLORS
+    global SIZE_M, SIZE_L, SIZE_L2, SIZE_L3
+    global PTS
+
+    SIZE_M = sizes[0]
+    SIZE_L = sizes[1]
+    SIZE_L2 = sizes[2]
+    SIZE_L3 = sizes[3]
+
+    _byte_len = 10
+    for i, v in enumerate(["M", "L", "L2", "L3", "L4"]):
+        color_bytes = bytes(colors[i*_byte_len: i*_byte_len + _byte_len])
+        COLORS[v] = color_bytes.decode("utf-8").strip("\x00")
+
+    # COLORS["M"] = colors[4]
+    # COLORS["L"] = colors[3]
+    # COLORS["L2"] = colors[2]
+    # COLORS["L3"] = colors[1]
+    # COLORS["L4"] = colors[0]
+
+    for i in range(4):
+        PTS[i] = [points[i*2], points[i*2+1]]
+    if all([v==0 for v in points]):
+        PTS = None
+    
+    print("COLOR", COLORS)
+    print("PTS", PTS)
+    
 def prep_display(args, cfg, dets_out, img, h, w, undo_transform=True, class_color=False, mask_alpha=0.45):
     """
     Note: If undo_transform=False then im_h and im_w are allowed to be None.
@@ -278,8 +308,8 @@ def prep_display_for_ui(args, cfg, dets_out, img, h, w, undo_transform=True, cla
         show_img = undo_image_transformation(show_img, w, h)
         show_img_gpu = torch.Tensor(show_img).cuda()
     else:
-        show_img = show_img / 255.0
-        preview_img = img / 255.0
+        show_img_gpu = show_img / 255.0
+        preview_img_gpu = img / 255.0
         h, w, _ = img.shape
 
     with timer.env('Postprocess'):
@@ -333,8 +363,6 @@ def prep_display_for_ui(args, cfg, dets_out, img, h, w, undo_transform=True, cla
         x1, y1, x2, y2 = boxes[j, :]
         # color = get_color(j)
         color = get_color_by_size(masks[j], on_gpu=False)
-
-        score = scores[j]
 
         _x = int((x2 - x1) // 2 + x1)
         _y = int((y2 - y1) // 2 + y1)
@@ -397,7 +425,7 @@ def _zoom(frame, rate=1.0):
     crop_w_to = int(w/rate)
     return cv2.resize(frame[crop_h:crop_h_to, crop_w:crop_w_to, :], dsize = (WIDTH, HEIGHT))
 
-def evalvideo_show_frame(net:Yolact, path:str, cuda: bool, args, cfg, set_frame=None):
+def evalvideo_show_frame(net:Yolact, path:str, cuda: bool, args, cfg, set_frame=None, sizeArray = None, colorArray = None, pointArray = None):
     vid = cv2.VideoCapture(int(path))
     vid.set(cv2.CAP_PROP_FRAME_WIDTH, CAM_WIDTH)
     vid.set(cv2.CAP_PROP_FRAME_HEIGHT, CAM_HEIGHT)
@@ -432,7 +460,6 @@ def evalvideo_show_frame(net:Yolact, path:str, cuda: bool, args, cfg, set_frame=
     moving_statistics = {"conf_hist": []}
 
     def cleanup_and_exit():
-        print()
         pool.terminate()
         vid.release()
         cv2.destroyAllWindows()
@@ -445,6 +472,8 @@ def evalvideo_show_frame(net:Yolact, path:str, cuda: bool, args, cfg, set_frame=
         """
         四角形を長方形に変換する
         """
+        if PTS is None:
+            return frame
         h, w, _ = frame.shape
         from_pts = np.array(PTS)
         dst_pts = np.array([
@@ -495,21 +524,18 @@ def evalvideo_show_frame(net:Yolact, path:str, cuda: bool, args, cfg, set_frame=
             frame, preds = inp
             return prep_display_for_ui(args, cfg, preds, frame, None, None, undo_transform=False, class_color=True, mask_alpha=1)
 
-    frame_buffer = Queue()
+    frame_buffer = Queue()    
     video_fps = 0
 
     # All this timing code to make sure that 
     def play_video():
         nonlocal frame_buffer, running, video_fps
-
         video_frame_times = MovingAverage(100)
         frame_time_stabilizer = frame_time_target
         last_time = None
         stabilizer_step = 0.0005
-
         while running:
             frame_time_start = time.time()
-
             if not frame_buffer.empty():
                 next_time = time.time()
                 if last_time is not None:
@@ -517,17 +543,20 @@ def evalvideo_show_frame(net:Yolact, path:str, cuda: bool, args, cfg, set_frame=
                     video_fps = 1 / video_frame_times.get_avg()
                 # cv2.imshow(path, frame_buffer.get())
                 # _resized_frame = _zoom(frame_buffer.get(), args.zoom_rate)
-                preview_img, show_img = frame_buffer.get()
-                set_frame(preview_img)
+                #preview_img, show_img = frame_buffer.get()
+                show_img =  frame_buffer.get()
                 show_frame = cv2.resize(show_img, dsize = (WIDTH, HEIGHT))
                 cv2.imshow("frame", show_frame)
                 last_time = next_time
+            ## frame更新のタイミングで上書きするが更新頻度が高すぎる
+            override_global_color_size_pts(sizeArray, colorArray, pointArray)
+
             if args.display_ajuster:
                 show_ajuster(vid, args.zoom_rate)
                 
             if cv2.waitKey(1) == 27: # Press Escape to close
                 running = False
-
+            
             buffer_size = frame_buffer.qsize()
             if buffer_size < args.video_multiframe:
                 frame_time_stabilizer += stabilizer_step
@@ -538,13 +567,11 @@ def evalvideo_show_frame(net:Yolact, path:str, cuda: bool, args, cfg, set_frame=
 
             # new_target = frame_time_stabilizer if is_webcam else max(frame_time_stabilizer, frame_time_target)
             new_target = frame_time_stabilizer
-
             next_frame_target = max(2 * new_target - video_frame_times.get_avg(), 0)
             target_time = frame_time_start + next_frame_target - 0.001 # Let's just subtract a millisecond to be safe
             # This gives more accurate timing than if sleeping the whole amount at once
             while time.time() < target_time:
                 time.sleep(0.001)
-
 
     extract_frame = lambda x, i: (x[0][i] if x[1][i] is None else x[0][i].to(x[1][i]['box'].device), [x[1][i]])
 
@@ -564,7 +591,6 @@ def evalvideo_show_frame(net:Yolact, path:str, cuda: bool, args, cfg, set_frame=
     active_frames = []
     inference_times = []
 
-    print()
     while vid.isOpened() and running:
         start_time = time.time()
 
@@ -579,7 +605,9 @@ def evalvideo_show_frame(net:Yolact, path:str, cuda: bool, args, cfg, set_frame=
         # For each frame whose job was the last in the sequence (i.e. for all final outputs)
         for frame in active_frames:
             if frame['idx'] == 0:
-                frame_buffer.put(frame['value'].get())
+                preview, show = frame['value'].get()
+                set_frame(preview)
+                frame_buffer.put(show)
 
         # Remove the finished frames from the processing queue
         active_frames = [x for x in active_frames if x['idx'] > 0]
@@ -606,7 +634,7 @@ def evalvideo_show_frame(net:Yolact, path:str, cuda: bool, args, cfg, set_frame=
         # np.save(args.video, np.asarray(inference_times))
         # np.save("./tmp/tmp", np.asarray(inference_times))
 
-        print('\rProcessing FPS: %.2f | Video Playback FPS: %.2f | Frames in Buffer: %d    ' % (fps, video_fps, frame_buffer.qsize()), end='')
+        print('\rProcessing FPS: %.2f | Video Playback FPS: %.2f | Frames in Buffer: %d    ' % (fps, video_fps, frame_buffer.qsize()), end='')        
     
     cleanup_and_exit()
 
