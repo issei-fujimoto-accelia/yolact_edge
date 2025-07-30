@@ -101,14 +101,14 @@ def prep_display(args, cfg, dets_out, img, h, w, undo_transform=True, class_colo
             img = img.cuda()
 
     if undo_transform:
-        img_numpy = undo_image_transformation(img, w, h)        
+        img_numpy = undo_image_transformation(img, w, h)
         img_gpu = torch.Tensor(img_numpy).cuda()
     else:
         img_gpu = img / 255.0
         h, w, _ = img.shape
     
     with timer.env('Postprocess'):
-        keep_class_idx = TURNIP_LABEL_IDX if args.only_turnip else -1        
+        keep_class_idx = TURNIP_LABEL_IDX if args.only_turnip else -1
         t = postprocess(dets_out, w, h, visualize_lincomb = args.display_lincomb,
                                         crop_masks        = args.crop,
                                         score_threshold   = args.score_threshold,
@@ -261,6 +261,109 @@ def prep_display(args, cfg, dets_out, img, h, w, undo_transform=True, class_colo
     #    cv2.circle(img_numpy, (20, 20), 40, COLORS["red"], thickness=-1)
     return img_numpy
 
+def prep_display_for_ui(args, cfg, dets_out, img, h, w, undo_transform=True, class_color=False, mask_alpha=0.45):
+    """
+    Note: If undo_transform=False then im_h and im_w are allowed to be None.
+    """
+
+    show_img = torch.zeros(img.shape, dtype=torch.int8)
+    show_img = show_img + 255
+    if args.cuda:
+        show_img = show_img.cuda()
+
+    if undo_transform:
+        preview_img = undo_image_transformation(img, w, h)
+        preview_img_gpu = torch.Tensor(preview_img).cuda()
+
+        show_img = undo_image_transformation(show_img, w, h)
+        show_img_gpu = torch.Tensor(show_img).cuda()
+    else:
+        show_img = show_img / 255.0
+        preview_img = img / 255.0
+        h, w, _ = img.shape
+
+    with timer.env('Postprocess'):
+        keep_class_idx = TURNIP_LABEL_IDX if args.only_turnip else -1
+        t = postprocess(dets_out, w, h, visualize_lincomb = args.display_lincomb,
+                                        crop_masks        = args.crop,
+                                        score_threshold   = args.score_threshold,
+                                        keep_class_idx    = keep_class_idx
+                                        )
+        if args.cuda:
+          torch.cuda.synchronize()
+
+    with timer.env('Copy'):
+        if cfg.eval_mask_branch:
+            # Masks are drawn on the GPU, so don't copy
+            masks = t[3][:args.top_k]
+        classes, scores, boxes = [x[:args.top_k].cpu().numpy() for x in t[:3]]
+
+    num_dets_to_consider = min(args.top_k, classes.shape[0])
+    for j in range(num_dets_to_consider):
+        if scores[j] < args.score_threshold:
+            num_dets_to_consider = j
+            break
+    
+    if num_dets_to_consider == 0:
+        # No detections found so just output the original image
+        return (preview_img_gpu * 255).byte().cpu().numpy(), (show_img_gpu * 255).byte().cpu().numpy(), 
+
+    def get_color_by_size(mask, on_gpu=True):
+        size = torch.count_nonzero(mask)
+        if size < SIZE_M:
+          select_color = "M"
+        elif size < SIZE_L:
+          select_color = "L"
+        elif size < SIZE_L2:
+            select_color = "L2"
+        elif size < SIZE_L3:
+            select_color = "L3"
+        else:  
+          select_color = "L4"
+        color = COLORS[select_color]
+        if on_gpu:
+            color = torch.Tensor(color).to("cuda").float() / 255.
+        ## color_cache[on_gpu][color_idx] = color
+        return color
+
+    show_img_numpy = (show_img_gpu * 255).byte().cpu().numpy()
+    preview_img_numpy = (preview_img_gpu * 255).byte().cpu().numpy()
+    
+    for j in reversed(range(num_dets_to_consider)):
+        x1, y1, x2, y2 = boxes[j, :]
+        # color = get_color(j)
+        color = get_color_by_size(masks[j], on_gpu=False)
+
+        score = scores[j]
+
+        _x = int((x2 - x1) // 2 + x1)
+        _y = int((y2 - y1) // 2 + y1)
+        cv2.circle(show_img_numpy,
+                center=(_x, _y),
+                radius=DOT_RAD,
+                color=color,
+                thickness=-1,
+                lineType=cv2.LINE_4,
+                shift=0
+        )
+        
+        ## bbox
+        cv2.rectangle(preview_img_numpy, (x1, y1), (x2, y2), color, 1)
+
+        ## size
+        size = torch.count_nonzero(masks[j])
+        text_str = 'size: %d' % size
+
+        font_face = cv2.FONT_HERSHEY_DUPLEX
+        font_scale = 0.6
+        font_thickness = 1
+
+        text_pt = (x1, y1 - 3)
+        # text_color = [255, 255, 255]
+        text_color = [0, 0, 0]
+        cv2.putText(preview_img_numpy, text_str, text_pt, font_face, font_scale, text_color, font_thickness, cv2.LINE_AA)
+
+    return preview_img_numpy, show_img_numpy
 
 class CustomDataParallel(torch.nn.DataParallel):
     """ A Custom Data Parallel class that properly gathers lists of dictionaries. """
@@ -294,7 +397,7 @@ def _zoom(frame, rate=1.0):
     crop_w_to = int(w/rate)
     return cv2.resize(frame[crop_h:crop_h_to, crop_w:crop_w_to, :], dsize = (WIDTH, HEIGHT))
 
-def evalvideo_show_frame(net:Yolact, path:str, cuda: bool, args, cfg):    
+def evalvideo_show_frame(net:Yolact, path:str, cuda: bool, args, cfg, set_frame=None):
     vid = cv2.VideoCapture(int(path))
     vid.set(cv2.CAP_PROP_FRAME_WIDTH, CAM_WIDTH)
     vid.set(cv2.CAP_PROP_FRAME_HEIGHT, CAM_HEIGHT)
@@ -389,8 +492,8 @@ def evalvideo_show_frame(net:Yolact, path:str, cuda: bool, args, cfg):
 
     def prep_frame(inp):
         with torch.no_grad():
-            frame, preds = inp            
-            return prep_display(args, cfg, preds, frame, None, None, undo_transform=False, class_color=True, mask_alpha=1)
+            frame, preds = inp
+            return prep_display_for_ui(args, cfg, preds, frame, None, None, undo_transform=False, class_color=True, mask_alpha=1)
 
     frame_buffer = Queue()
     video_fps = 0
@@ -413,9 +516,11 @@ def evalvideo_show_frame(net:Yolact, path:str, cuda: bool, args, cfg):
                     video_frame_times.add(next_time - last_time)
                     video_fps = 1 / video_frame_times.get_avg()
                 # cv2.imshow(path, frame_buffer.get())
-                _resized_frame = _zoom(frame_buffer.get(), args.zoom_rate)
-                _resized_frame = cv2.resize(_resized_frame, dsize = (WIDTH, HEIGHT))
-                cv2.imshow("frame", _resized_frame)
+                # _resized_frame = _zoom(frame_buffer.get(), args.zoom_rate)
+                preview_img, show_img = frame_buffer.get()
+                set_frame(preview_img)
+                show_frame = cv2.resize(show_img, dsize = (WIDTH, HEIGHT))
+                cv2.imshow("frame", show_frame)
                 last_time = next_time
             if args.display_ajuster:
                 show_ajuster(vid, args.zoom_rate)

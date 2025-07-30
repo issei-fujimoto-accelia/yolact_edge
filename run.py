@@ -96,7 +96,7 @@ color_cache = defaultdict(lambda: {})
 
 
 if __name__ == '__main__':
-    model_path = SavePath.from_str(args.trained_model)    
+    model_path = SavePath.from_str(args.trained_model)
     set_cfg(args.config)
 
     if args.detect:

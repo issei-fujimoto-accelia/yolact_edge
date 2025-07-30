@@ -911,7 +911,7 @@ def savevideo(net:Yolact, in_path:str, out_path:str):
     print()
 
 
-def evaluate(net:Yolact, dataset, train_mode=False, train_cfg=None):
+def evaluate(net:Yolact, dataset, train_mode=False, train_cfg=None, set_frame=None):
     net.detect.use_fast_nms = args.fast_nms
     cfg.mask_proto_debug = args.mask_proto_debug
 
@@ -947,7 +947,7 @@ def evaluate(net:Yolact, dataset, train_mode=False, train_cfg=None):
         else:
             ## ここに入る
             # evalvideo(net, args.video)
-            evalvideo_show_frame(net, args.video, args.cuda, args, cfg)
+            evalvideo_show_frame(net, args.video, args.cuda, args, cfg, set_frame)
         return
 
 
@@ -1225,8 +1225,8 @@ def print_maps(all_maps):
 
 
 
-if __name__ == '__main__':
-    parse_args()
+def run(argv=None, set_frame):
+    parse_args(argv)
 
     if args.config is not None:
         set_cfg(args.config)
@@ -1300,4 +1300,8 @@ if __name__ == '__main__':
         if args.cuda:
             net = net.cuda()
 
-        evaluate(net, dataset)
+        evaluate(net, dataset, set_frame)
+
+
+if __name__ == '__main__':
+    run()
