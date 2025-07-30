@@ -144,6 +144,8 @@ def parse_args(argv=None):
                         help='hide background, when show frame')
     parser.add_argument('--display_dot', default=True, type=str2bool,
                         help='maskの代わりにドットでかぶの位置を表示')
+    #parser.add_argument('--display_scores', default=True, type=str2bool,
+    #                    help='分類scoreを表示')
     parser.add_argument('--display_ajuster', default=True, type=str2bool,
                         help='show ajuster')
     parser.add_argument('--only_turnip', default=True, type=str2bool,
@@ -169,6 +171,7 @@ coco_cats = {} # Call prep_coco_cats to fill this
 coco_cats_inv = {}
 color_cache = defaultdict(lambda: {})
 
+## image用
 def prep_display(dets_out, img, h, w, undo_transform=True, class_color=False, mask_alpha=0.45):
     """
     Note: If undo_transform=False then im_h and im_w are allowed to be None.

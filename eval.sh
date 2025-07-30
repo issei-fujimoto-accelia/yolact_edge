@@ -44,20 +44,21 @@ fi
 if [ $run_mode == "vid" ]; then
   echo "run video"
   python3 eval.py \
-  --score_threshold=0.7 \
+  --score_threshold=0.6 \
   --trained_model=$weight_path \
   --top_k=100 \
   --config=turnip_restnet101_config \
   --display \
   --cuda=true \
   --disable_tensorrt \
-  --video 0 \
+  --video 2 \
   --video_multiframe=1 \
   --display_masks=true \
-  --display_bboxes=true \
-  --display_text=false \
+  --display_bboxes=false \
+  --display_text=true \
   --display_size=true \
-  --display_dot=true \
+  --display_dot=false \
+  --display_scores=false \
   --hide_back=false  \
   --display_ajuster=false \
   --only_turnip=true \

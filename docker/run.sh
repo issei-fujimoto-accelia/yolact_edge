@@ -1,4 +1,6 @@
 #!/bin/bash
+## checkcam は左上、右上、右下、左下の順番
+## 
 
 SOURCE_CODE="/home/accelia/i.fujimoto/yolact_edge"
 
@@ -8,18 +10,20 @@ docker run --rm --gpus all -it --name=yolact_edge \
   --shm-size=8gb \
   -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
   -v $SOURCE_CODE:/yolact_edge/:rw \
-  --device /dev/video2:/dev/video0:mwr \
+  --device /dev/video1:/dev/video0:mwr \
   -e DISPLAY=$DISPLAY \
   yolact_edge_image \
-  python /yolact_edge/check_cam.py  
+  bash /yolact_edge/eval.sh
+  # python /yolact_edge/check_cam.py  
+  # 
+  # 
+
+  # python /yolact_edge/check_cam.py  
+    # python /yolact_edge/check_cam.py  
   # bash /yolact_edge/eval.sh
-#   
-#   bash /yolact_edge/eval.sh
-# python /yolact_edge/check_cam.py  
 
-
-
-
+  
+  
   # bash /yolact_edge/gomi.sh
   # bash /yolact_edge/eval.sh
   # python /yolact_edge/check_cam.py  
