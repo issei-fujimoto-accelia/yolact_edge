@@ -75,7 +75,7 @@ def convert(frame, w, h):
     return t_frame
 
 #カメラの設定　デバイスIDは0
-cap = cv2.VideoCapture(-1)
+cap = cv2.VideoCapture(0)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAP_WIDTH)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAP_HEIGHT)
 cap_width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)

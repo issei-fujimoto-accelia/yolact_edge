@@ -11,11 +11,11 @@ docker run --rm --gpus all -it --name=yolact_edge \
   --device /dev/video2:/dev/video0:mwr \
   -e DISPLAY=$DISPLAY \
   yolact_edge_image \
-  python /yolact_edge/check_cam.py  
+  bash /yolact_edge/eval.sh
+  # python /yolact_edge/check_cam.py  
   # bash /yolact_edge/eval.sh
-#   
-#   bash /yolact_edge/eval.sh
-# python /yolact_edge/check_cam.py  
+  # bash /yolact_edge/eval.sh
+  # python /yolact_edge/check_cam.py  
 
 
 

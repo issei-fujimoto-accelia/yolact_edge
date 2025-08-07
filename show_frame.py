@@ -101,10 +101,11 @@ def override_global_color_size_pts(sizes, colors, points):
     SIZE_L2 = sizes[2]
     SIZE_L3 = sizes[3]
 
-    _byte_len = 10
     for i, v in enumerate(["M", "L", "L2", "L3", "L4"]):
-        color_bytes = bytes(colors[i*_byte_len: i*_byte_len + _byte_len])
-        COLORS[v] = color_bytes.decode("utf-8").strip("\x00")
+        _idx = i*3
+        # COLORS[v] = (colors[_idx], colors[_idx+1], colors[_idx+2])
+        COLORS[v] = (colors[_idx+2], colors[_idx+1], colors[_idx])
+        ## b,g,rの順番
 
     # COLORS["M"] = colors[4]
     # COLORS["L"] = colors[3]
@@ -112,12 +113,15 @@ def override_global_color_size_pts(sizes, colors, points):
     # COLORS["L3"] = colors[1]
     # COLORS["L4"] = colors[0]
 
+
+    print("points", points[:])
     for i in range(4):
         PTS[i] = [points[i*2], points[i*2+1]]
     if all([v==0 for v in points]):
         PTS = None
     
-    print("COLOR", COLORS)
+    #print("COLOR", COLORS)
+    #print("sizes", sizes[:])
     print("PTS", PTS)
     
 def prep_display(args, cfg, dets_out, img, h, w, undo_transform=True, class_color=False, mask_alpha=0.45):
@@ -291,26 +295,30 @@ def prep_display(args, cfg, dets_out, img, h, w, undo_transform=True, class_colo
     #    cv2.circle(img_numpy, (20, 20), 40, COLORS["red"], thickness=-1)
     return img_numpy
 
-def prep_display_for_ui(args, cfg, dets_out, img, h, w, undo_transform=True, class_color=False, mask_alpha=0.45):
+def prep_display_for_ui(args, cfg, dets_out, img, raw_frame, h, w, undo_transform=True, class_color=False, mask_alpha=0.45):
     """
     Note: If undo_transform=False then im_h and im_w are allowed to be None.
     """
-
     show_img = torch.zeros(img.shape, dtype=torch.int8)
     show_img = show_img + 255
     if args.cuda:
         show_img = show_img.cuda()
-
+    
     if undo_transform:
-        preview_img = undo_image_transformation(img, w, h)
-        preview_img_gpu = torch.Tensor(preview_img).cuda()
-
+        # preview_img = undo_image_transformation(raw_frame, w, h)
+        # preview_img_gpu = torch.Tensor(preview_img).cuda()
+        preview_img_gpu = undo_image_transformation(img, w, h)
+        
         show_img = undo_image_transformation(show_img, w, h)
         show_img_gpu = torch.Tensor(show_img).cuda()
     else:
-        show_img_gpu = show_img / 255.0
         preview_img_gpu = img / 255.0
+        show_img_gpu = show_img / 255.0
         h, w, _ = img.shape
+
+    preview_img_numpy = (preview_img_gpu * 255).byte().cpu().numpy()
+    # preview_img_numpy = raw_frame / 255.0
+    # preview_img_numpy = raw_frame
 
     with timer.env('Postprocess'):
         keep_class_idx = TURNIP_LABEL_IDX if args.only_turnip else -1
@@ -336,7 +344,7 @@ def prep_display_for_ui(args, cfg, dets_out, img, h, w, undo_transform=True, cla
     
     if num_dets_to_consider == 0:
         # No detections found so just output the original image
-        return (preview_img_gpu * 255).byte().cpu().numpy(), (show_img_gpu * 255).byte().cpu().numpy(), 
+        return preview_img_numpy * 255, (show_img_gpu * 255).byte().cpu().numpy()
 
     def get_color_by_size(mask, on_gpu=True):
         size = torch.count_nonzero(mask)
@@ -357,7 +365,7 @@ def prep_display_for_ui(args, cfg, dets_out, img, h, w, undo_transform=True, cla
         return color
 
     show_img_numpy = (show_img_gpu * 255).byte().cpu().numpy()
-    preview_img_numpy = (preview_img_gpu * 255).byte().cpu().numpy()
+    # preview_img_numpy = (preview_img_gpu * 255).byte().cpu().numpy()    
     
     for j in reversed(range(num_dets_to_consider)):
         x1, y1, x2, y2 = boxes[j, :]
@@ -487,18 +495,19 @@ def evalvideo_show_frame(net:Yolact, path:str, cuda: bool, args, cfg, set_frame=
         return t_frame
 
     def transform_frame(frames):
+        raw_frames = frames.copy()
         frames = [convert(frame) for frame in frames]
         with torch.no_grad():
           if cuda:
             frames = [torch.from_numpy(frame).cuda().float() for frame in frames]
           else:
             frames = [torch.from_numpy(frame).float() for frame in frames]
-          return frames, transform(torch.stack(frames, 0))
+          return raw_frames, frames, transform(torch.stack(frames, 0))
 
     def eval_network(inp):
         nonlocal frame_idx
         with torch.no_grad():
-            frames, imgs = inp
+            raw_frames, frames, imgs = inp
             if frame_idx % every_k_frames == 0 or cfg.flow.warp_mode == 'none':
                 extras = {"backbone": "full", "interrupt": False, "keep_statistics": True,
                         "moving_statistics": moving_statistics}
@@ -516,19 +525,18 @@ def evalvideo_show_frame(net:Yolact, path:str, cuda: bool, args, cfg, set_frame=
                 with torch.no_grad():
                     net_outs = net(imgs, extras=extras)
             frame_idx += 1
-
-            return frames, net_outs["pred_outs"]
+            return raw_frames, frames, net_outs["pred_outs"]
 
     def prep_frame(inp):
         with torch.no_grad():
-            frame, preds = inp
-            return prep_display_for_ui(args, cfg, preds, frame, None, None, undo_transform=False, class_color=True, mask_alpha=1)
+            raw_frame, frame, preds = inp
+            return prep_display_for_ui(args, cfg, preds, frame, raw_frame, None, None, undo_transform=False, class_color=True, mask_alpha=1)
 
     frame_buffer = Queue()    
     video_fps = 0
 
     # All this timing code to make sure that 
-    def play_video():
+    def play_video  ():
         nonlocal frame_buffer, running, video_fps
         video_frame_times = MovingAverage(100)
         frame_time_stabilizer = frame_time_target
@@ -548,8 +556,8 @@ def evalvideo_show_frame(net:Yolact, path:str, cuda: bool, args, cfg, set_frame=
                 show_frame = cv2.resize(show_img, dsize = (WIDTH, HEIGHT))
                 cv2.imshow("frame", show_frame)
                 last_time = next_time
-            ## frame更新のタイミングで上書きするが更新頻度が高すぎる
-            override_global_color_size_pts(sizeArray, colorArray, pointArray)
+            ## frame更新のタイミングで上書きするが更新頻度が高すぎる            
+            override_global_color_size_pts(sizeArray, colorArray, pointArray)            
 
             if args.display_ajuster:
                 show_ajuster(vid, args.zoom_rate)
@@ -573,7 +581,7 @@ def evalvideo_show_frame(net:Yolact, path:str, cuda: bool, args, cfg, set_frame=
             while time.time() < target_time:
                 time.sleep(0.001)
 
-    extract_frame = lambda x, i: (x[0][i] if x[1][i] is None else x[0][i].to(x[1][i]['box'].device), [x[1][i]])
+    extract_frame = lambda x, i: (x[0][i], x[1][i] if x[2][i] is None else x[1][i].to(x[2][i]['box'].device), [x[2][i]])
 
     # Prime the network on the first frame because I do some thread unsafe things otherwise
     print('Initializing model... ', end='')

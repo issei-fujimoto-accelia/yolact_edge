@@ -1,7 +1,9 @@
 """
-colorArrayをstringにしたが、(90, 255,0)のような数値で良い
+4点の指定の座標がずれている
+縦横を１とした座標とかにしたほうが良いかも
 
-save機能とload機能が動いてないかも
+
+
 """
 
 
@@ -21,7 +23,7 @@ args = [
     "--video_multiframe=1",
     "--use_fp16_tensorrt",
     "--only_turnip=true",
-    "--video=0",
+    "--video=2",
     "--disable_tensorrt",
     "--display_ajuster=false"
 ]
