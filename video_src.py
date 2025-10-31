@@ -37,6 +37,10 @@ class RealSense(VideoSrc):
         self.width = width
         self.height = height
 
+
+        print("width: ", width)
+        print("height: ", height)
+        print("fps: ", fps)
         # カラーストリームを設定
         self.config.enable_stream(rs.stream.color, width, height, rs.format.bgr8, fps)
 
@@ -46,11 +50,29 @@ class RealSense(VideoSrc):
         self.config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, fps)
         self.fps = fps
 
+        ## preset
+        PRESET = "High Density"
+        # PRESET = "High Accuracy"
+        pipeline_wrapper = rs.pipeline_wrapper(self.pipeline)
+        pipeline_profile = self.config.resolve(pipeline_wrapper)
+        depth_sensor = pipeline_profile.get_device().first_depth_sensor()
+        preset_range = depth_sensor.get_option_range(rs.option.visual_preset)
+        for i in range(int(preset_range.max)):
+            visulpreset = depth_sensor.get_option_value_description(rs.option.visual_preset,i)
+            print('%02d: %s' %(i,visulpreset))
+            if visulpreset == PRESET:
+                depth_sensor.set_option(rs.option.visual_preset, i)
+                print(f"set {PRESET}")
+
+        align_to = rs.stream.color
+        self.align = rs.align(align_to)
+
     def start(self):
         self.pipeline.start(self.config)
 
     def _get_frames(self):
         frames = self.pipeline.wait_for_frames()
+        frames = self.align.process(frames)
         color_frame = frames.get_color_frame()
         depth_frame = frames.get_depth_frame()
         if not color_frame or not depth_frame:
