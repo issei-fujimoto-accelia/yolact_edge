@@ -1,0 +1,1 @@
+echo "pow 0" | cec-client -s -d 1 | tail -n1

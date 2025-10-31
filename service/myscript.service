@@ -1,0 +1,12 @@
+[Unit]
+Description=Run yolact_edge
+
+[Service]
+Type=simple
+ExecStart=/home/accelia/i.fujimoto/yolact_edge/service/start_as_service.sh
+ExecStopPost=/home/accelia/i.fujimoto/yolact_edge/service/cleanup.sh
+Restart=no
+KillMode=control-group
+
+[Install]
+WantedBy=default.target
