@@ -27,3 +27,6 @@ systemctl --user daemon-reload
 
 ### log
 journalctl -u myscript.service -f
+
+
+
