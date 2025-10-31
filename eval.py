@@ -1307,8 +1307,9 @@ def run(argv=None, set_frame=None, event=None, sizeArray = None, colorArray = No
     try:
         _run(argv, set_frame=set_frame, sizeArray=sizeArray, colorArray=colorArray, pointArray=pointArray)
     except Exception as e:
-        print("child process error", e)
-        event.set()
+        print("child process error: ", e)
+        if event is not None:
+             event.set()
 
 if __name__ == '__main__':
-    run()
+    _run()
