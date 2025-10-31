@@ -80,6 +80,9 @@ WORKDIR /home/${USER}/torch2trt
 RUN pip install packaging --user
 RUN python setup.py install --plugins --user
 
+## realsense
+RUN pip install pyrealsense2
+
 WORKDIR /home/${USER}
 RUN ln -s /yolact_edge
 RUN ln -s /datasets
