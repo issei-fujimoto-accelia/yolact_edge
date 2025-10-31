@@ -8,6 +8,7 @@ from multiprocessing.pool import ThreadPool
 from queue import Queue
 import numpy as np
 from collections import defaultdict
+from screeninfo import get_monitors
 
 from yolact_edge.layers.output_utils import postprocess, undo_image_transformation
 from yolact_edge.utils import timer
@@ -16,6 +17,8 @@ from yolact_edge.yolact import Yolact
 from yolact_edge.utils.functions import MovingAverage
 from yolact_edge.utils.augmentations import FastBaseTransform
 from yolact_edge.utils.augmentations import BaseTransform
+
+from video_src import RealSense, CV2Video
 
 ## --- 出力するサイズ ---
 ## full hd 16:9
@@ -48,7 +51,8 @@ CAM_HEIGHT = 720
 ## --- 取り込むカメラのサイズ ---
 
 FPS = 10
-FPS = 5
+# FPS = 5
+FPS = 15
 
 # COLOR_SET = dict(
 #     green=(0, 255, 0),
@@ -91,7 +95,7 @@ PTS = [[179, 78], [501, 53], [518, 238], [187, 254]]
 ## -- convert to ---
 
 
-DOT_RAD = 5
+DOT_RAD = 20
 
 TURNIP_LABEL_IDX = 0
 
@@ -102,6 +106,8 @@ def override_global_color_size_pts(sizes, colors, points):
     global COLORS
     global SIZE_M, SIZE_L, SIZE_L2, SIZE_L3
     global PTS
+    if sizes is None or colors is None or points is None:
+        return
 
     SIZE_M = sizes[0]
     SIZE_L = sizes[1]
@@ -120,16 +126,17 @@ def override_global_color_size_pts(sizes, colors, points):
     # COLORS["L3"] = colors[1]
     # COLORS["L4"] = colors[0]
 
-    print("points", points[:])
-    for i in range(4):
-        PTS[i] = [points[i * 2], points[i * 2 + 1]]
+    # print("points", points[:])
+    PTS = []
+    for i in range(4):        
+        PTS.append([points[i * 2]*CAM_WIDTH, points[i * 2 + 1]*CAM_HEIGHT])
+        # PTS.append([points[i * 2], points[i * 2 + 1]])
     if all([v == 0 for v in points]):
         PTS = None
-
+    # PTS = None
     # print("COLOR", COLORS)
     # print("sizes", sizes[:])
-    print("PTS", PTS)
-
+    # print("PTS", PTS)
 
 def prep_display(
     args,
@@ -422,7 +429,7 @@ def prep_display_for_ui(
 
     if num_dets_to_consider == 0:
         # No detections found so just output the original image
-        return preview_img_numpy * 255, (show_img_gpu * 255).byte().cpu().numpy()
+        return preview_img_numpy, (show_img_gpu * 255).byte().cpu().numpy()
 
     def get_color_by_size(mask, on_gpu=True):
         size = torch.count_nonzero(mask)
@@ -470,7 +477,7 @@ def prep_display_for_ui(
         text_str = "size: %d" % size
 
         ## depth
-        if depth:
+        if depth is not None:
             depth_value = min(
                 [
                     depth[_y + 2][_x],
@@ -555,6 +562,7 @@ def evalvideo_show_frame(
     colorArray=None,
     pointArray=None,
 ):
+    override_global_color_size_pts(sizeArray, colorArray, pointArray)
     # vid = cv2.VideoCapture(int(path))
     # vid.set(cv2.CAP_PROP_FRAME_WIDTH, CAM_WIDTH)
     # vid.set(cv2.CAP_PROP_FRAME_HEIGHT, CAM_HEIGHT)
@@ -614,7 +622,7 @@ def evalvideo_show_frame(
         # h, w = frame.shape
         h = frame.shape[0]
         w = frame.shape[1]
-        h, w, _ = frame.shape
+
         from_pts = np.array(PTS)
         dst_pts = np.array(
             [[0, 0], [w - 1, 0], [w - 1, h - 1], [0, h - 1]], dtype="float32"
@@ -638,8 +646,8 @@ def evalvideo_show_frame(
         frame[0] = civ_ret
         frame[1] = color image
         """
-        raw_frames = frames.copy()
         frames = [convert(frame[1]) for frame in frames]
+        raw_frames = frames.copy()
         with torch.no_grad():
             if cuda:
                 frames = [torch.from_numpy(frame).cuda().float() for frame in frames]
@@ -652,10 +660,9 @@ def evalvideo_show_frame(
         frame[0] = depth image
         frame[1] = color image
         """
-        raw_frames = frames.copy()
         depth_frames = [convert(frame[0]) for frame in frames]
         color_frames = [convert(frame[1]) for frame in frames]
-
+        raw_frames = color_frames.copy()
         with torch.no_grad():
             if cuda:
                 color_frames = [
@@ -706,8 +713,7 @@ def evalvideo_show_frame(
     def prep_frame(inp):
         with torch.no_grad():
             raw_frame, frame, preds, depth_image = inp
-            return (
-                prep_display_for_ui(
+            preview_img, show_img = prep_display_for_ui(
                     args,
                     cfg,
                     preds,
@@ -719,9 +725,31 @@ def evalvideo_show_frame(
                     class_color=True,
                     mask_alpha=1,
                     depth=depth_image,
-                ),
+                )
+            return (
+                preview_img,
+                show_img,
                 depth_image,
             )
+    def old_prep_frame(inp):
+        with torch.no_grad():
+            raw_frame, frame, preds, depth_image = inp
+            show_img = prep_display(
+                    args,
+                    cfg,
+                    preds,
+                    raw_frame,
+                    None,
+                    None,
+                    undo_transform=False,
+                    class_color=True,
+                    mask_alpha=1,                    
+                )
+            return (
+                show_img,
+                show_img,                
+                depth_image,
+            )        
 
     frame_buffer = Queue()
     video_fps = 0
@@ -743,13 +771,17 @@ def evalvideo_show_frame(
                 # cv2.imshow(path, frame_buffer.get())
                 # _resized_frame = _zoom(frame_buffer.get(), args.zoom_rate)
                 # preview_img, show_img = frame_buffer.get()
-                show_img, _ = frame_buffer.get()
+                show_img = frame_buffer.get()
                 show_frame = cv2.resize(show_img, dsize=(WIDTH, HEIGHT))
                 cv2.imshow("frame", show_frame)
+                ## PCを閉じるとディスプレイはプロジェクターのみの判定となる
+                ## 位置を固定して全画面にする
+                cv2.moveWindow("frame", 0, 0)
                 last_time = next_time
-            ## frame更新のタイミングで上書きするが更新頻度が高すぎる
-            override_global_color_size_pts(sizeArray, colorArray, pointArray)
 
+                ## frame更新のタイミングで上書きするが更新頻度が高すぎる
+                override_global_color_size_pts(sizeArray, colorArray, pointArray)            
+            
             if args.display_ajuster:
                 show_ajuster(vid, args.zoom_rate)
 
@@ -776,15 +808,16 @@ def evalvideo_show_frame(
 
     def extract_frame(x, i):
         if vid.with_depth:
-            color, preds, depth = x
+            raw, color, preds, depth = x
             if preds[i] is None:
-                return (color[i], [preds[i]], depth[i])
+                return (raw[i], color[i], [preds[i]], depth[i])
             else:
-                return (color[i].to(preds[i]["box"].device), [preds[i]], depth[i])
+                return (raw[i], color[i].to(preds[i]["box"].device), [preds[i]], depth[i])
         else:
             return (
-                x[0][i] if x[1][i] is None else x[0][i].to(x[1][i]["box"].device),
-                [x[1][i]],
+                x[0],
+                x[1][i] if x[1][i] is None else x[1][i].to(x[2][i]["box"].device),
+                [x[2][i]],
                 None,
             )
 
@@ -803,7 +836,7 @@ def evalvideo_show_frame(
     print("Done.")
 
     # For each frame the sequence of functions it needs to go through to be processed (in reversed order)
-    sequence = [prep_frame, eval_network, transform_frame]
+    sequence = [prep_frame, eval_network, _transform_frame]
     n_threads = len(sequence) + args.video_multiframe + 2
     # n_threads = 4
     pool = ThreadPool(processes=n_threads)
@@ -829,9 +862,11 @@ def evalvideo_show_frame(
         # For each frame whose job was the last in the sequence (i.e. for all final outputs)
         for frame in active_frames:
             if frame["idx"] == 0:
-                preview, show = frame["value"].get()
-                set_frame(preview)
+                preview, show, _ = frame["value"].get()
+                if set_frame:
+                    set_frame(preview)
                 frame_buffer.put(show)
+            
 
         # Remove the finished frames from the processing queue
         active_frames = [x for x in active_frames if x["idx"] > 0]

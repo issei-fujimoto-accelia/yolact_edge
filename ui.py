@@ -214,7 +214,6 @@ class CameraApp:
         if len(points) == 0:
             for i in range(len(self.pointArray)):
                 self.pointArray[i] = 0
-            print("set ", self.pointArray)
         else:
             for i in range(4):
                 self.pointArray[i*2] = points[i][0]
@@ -258,7 +257,7 @@ class RunAppPage():
         pass
 
     def update_frame(self):
-        if not self.preview_frame.empty():
+        while not self.preview_frame.empty():
             frame = self.preview_frame.get()
             # OpenCVのBGRをRGBに変換
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -379,7 +378,7 @@ class ColorSettingPage():
         self.update_frame()
         
     def update_frame(self):
-        if not self.preview_frame.empty():
+        while not self.preview_frame.empty():
             frame = self.preview_frame.get()
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             _width = int(self.root.winfo_width()/2)
@@ -519,7 +518,7 @@ class PointSettingPage():
     
 
     def update_frame(self):
-        if not self.preview_frame.empty():
+        while not self.preview_frame.empty():
             frame = self.preview_frame.get()
             # OpenCVのBGRをRGBに変換
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -538,7 +537,7 @@ class PointSettingPage():
                     self.coord_labels[i].config(text=f"{self._cood_text[i]}: ✅", font=self.font)
             else:
                 for (x, y) in self.click_points:
-                    cv2.circle(frame, (x, y), 5, (255, 0, 0), -1)
+                    cv2.circle(frame, (int(x*_width), int(y*height)), 5, (255, 0, 0), -1)
 
             image = Image.fromarray(frame)
             image_tk = ImageTk.PhotoImage(image)
@@ -551,10 +550,9 @@ class PointSettingPage():
 
     def clear_points(self):
         # クリックしたポイントをリセット
-        _cood_text = ["左上", "右上", "右下", "左下"]
         self.click_points = []
         for i in range(4):
-            self.coord_labels[i].config(text=f"{_cood_text[i]}: □")
+            self.coord_labels[i].config(text=f"{self._cood_text[i]}: □")
         self.coords_label.config(text="左上、右上、右下、左下の４つを指定してください")    
         self.camera_label.place_forget()
         self.points = []
@@ -563,16 +561,17 @@ class PointSettingPage():
     def on_click(self, event):
         _height = self.camera_label.winfo_height()
         _img_height = self.camera_label.image.height()
+        _img_width = self.camera_label.image.width()
         y = (_height - _img_height) // 2
-        _cood_text = ["左上", "右上", "右下", "左下"]
         if len(self.click_points) < 4:
             _y = event.y - y
             if _y > 0:
                 # print("click", (event.x, event.y))
-                self.click_points.append((event.x, _y))
+                self.click_points.append((event.x/_img_width, _y/_img_height))
+                # self.click_points.append((event.x, _y))
                 point = len(self.click_points)
                 # self.coord_labels[point - 1].config(text=f"{_cood_text[point-1]}: ({event.x}, {event.y})", font=self.font)
-                self.coord_labels[point - 1].config(text=f"{_cood_text[point-1]}: ✅", font=self.font)
+                self.coord_labels[point - 1].config(text=f"{self._cood_text[point-1]}: ✅", font=self.font)
             
     def save_point_settings(self):
         # 設定の保存
@@ -587,7 +586,7 @@ class PointSettingPage():
             x,y = self.click_points[i]
             settings[points[i]] = {"x":x, "y": y}
 
-        self.set_points(self.click_points)    
+        self.set_points(self.click_points)
         try:
             with open(POINT_SETTINGS_FILE, "w") as f:
                 json.dump(settings, f, indent=4)
@@ -599,14 +598,13 @@ class PointSettingPage():
     def load_point_settings(self):
         # 設定の読み込み（JSON）
         points = ["lu","ru", "rb", "lb"]
-        _cood_text = ["左上", "右上", "右下", "左下"]
         if os.path.exists(POINT_SETTINGS_FILE):
             try:
                 with open(POINT_SETTINGS_FILE, "r") as f:
                     settings = json.load(f)
                     for i, v in enumerate(points):
                          self.click_points.append((settings[v]["x"], settings[v]["y"]))
-                         self.coord_labels[i].config(text=f"{_cood_text[i]}: ✅", font=self.font)
+                         self.coord_labels[i].config(text=f"{self._cood_text[i]}: ✅", font=self.font)
                     self.set_points(self.click_points)
             except Exception as e:
                 print(e)
