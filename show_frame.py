@@ -426,7 +426,7 @@ def prep_display_for_ui(
         if scores[j] < args.score_threshold:
             num_dets_to_consider = j
             break
-
+    
     if num_dets_to_consider == 0:
         # No detections found so just output the original image
         return preview_img_numpy, (show_img_gpu * 255).byte().cpu().numpy()
@@ -731,6 +731,7 @@ def evalvideo_show_frame(
                 show_img,
                 depth_image,
             )
+    
     def old_prep_frame(inp):
         with torch.no_grad():
             raw_frame, frame, preds, depth_image = inp
@@ -776,7 +777,7 @@ def evalvideo_show_frame(
                 cv2.imshow("frame", show_frame)
                 ## PCを閉じるとディスプレイはプロジェクターのみの判定となる
                 ## 位置を固定して全画面にする
-                cv2.moveWindow("frame", 0, 0)
+                # cv2.moveWindow("frame", 0, 0)
                 last_time = next_time
 
                 ## frame更新のタイミングで上書きするが更新頻度が高すぎる

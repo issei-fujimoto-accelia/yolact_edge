@@ -21,9 +21,9 @@ from multiprocessing import Array
 
 IMG_WIDTH = 600
 IMG_HEIGHT = int(IMG_WIDTH * 9 / 16)  # 16:9比率に調整
-
-COLOR_SIZE_SETTINGS_FILE="color_size_setting.json"
-POINT_SETTINGS_FILE="point_settings.json"
+PROJECT_PATH="/home/accelia/i.fujimoto/yolact_edge"
+COLOR_SIZE_SETTINGS_FILE=f"{PROJECT_PATH}/ui_settings/color_size_setting.json"
+POINT_SETTINGS_FILE=f"{PROJECT_PATH}/ui_settings/point_settings.json"
 
 SIZE_LEN = 4
 COLOR_LEN = 5
@@ -175,6 +175,7 @@ class CameraApp:
                             _sizes.append(int(settings[f"input_{i+1}"].get("value", "0")))
                     self.set_sizes(_sizes)
                     self.set_colors(_color_hex)
+                print("load color setting", COLOR_SIZE_SETTINGS_FILE)
             except Exception as e:
                 pass
                 print("load error", e)
@@ -207,6 +208,7 @@ class CameraApp:
                     for i, v in enumerate(points):
                          self.pointArray[i*2] = settings[v]["x"]
                          self.pointArray[i*2+1] = settings[v]["y"]
+                print("load point setting", POINT_SETTINGS_FILE)
             except Exception as e:
                 pass
 
@@ -474,8 +476,8 @@ class PointSettingPage():
         self.update_id = None
         
     def create_page(self):
-        self.title = tk.Label(self.left, text="位置の設定", font=self.font)
-        self.title.pack(fill=tk.BOTH, expand=True)
+        # self.title = tk.Label(self.left, text="位置の設定", font=self.font)
+        # self.title.pack(fill=tk.X, expand=True)
 
         # self.page_frame = tk.Frame(self.root)
         # self.page_frame.grid(row=1, column=0, rowspan=2, sticky="nsew")
@@ -606,6 +608,7 @@ class PointSettingPage():
                          self.click_points.append((settings[v]["x"], settings[v]["y"]))
                          self.coord_labels[i].config(text=f"{self._cood_text[i]}: ✅", font=self.font)
                     self.set_points(self.click_points)
+                print("load point setting", POINT_SETTINGS_FILE)
             except Exception as e:
                 print(e)
                 messagebox.showerror("Error", "設定の読み込みに失敗しました")  

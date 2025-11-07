@@ -9,8 +9,8 @@ import multiprocessing
 import time
 from screeninfo import get_monitors
 
-
-weight_path="/home/accelia/i.fujimoto/yolact_edge/weights/yolact_edge_resnet101_244_1711_v8.pth"
+PROJECT_PATH="/home/accelia/i.fujimoto/yolact_edge"
+weight_path=f"{PROJECT_PATH}/weights/yolact_edge_resnet101_244_1711_v8.pth"
 args = [
     "--score_threshold=0.7",
     f"--trained_model={weight_path}",

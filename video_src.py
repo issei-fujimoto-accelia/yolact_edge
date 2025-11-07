@@ -52,17 +52,27 @@ class RealSense(VideoSrc):
 
         ## preset
         PRESET = "High Density"
-        # PRESET = "High Accuracy"
+        PRESET = "High Accuracy"
         pipeline_wrapper = rs.pipeline_wrapper(self.pipeline)
         pipeline_profile = self.config.resolve(pipeline_wrapper)
         depth_sensor = pipeline_profile.get_device().first_depth_sensor()
         preset_range = depth_sensor.get_option_range(rs.option.visual_preset)
         for i in range(int(preset_range.max)):
             visulpreset = depth_sensor.get_option_value_description(rs.option.visual_preset,i)
-            print('%02d: %s' %(i,visulpreset))
+            # print('%02d: %s' %(i,visulpreset))
             if visulpreset == PRESET:
                 depth_sensor.set_option(rs.option.visual_preset, i)
                 print(f"set {PRESET}")
+
+        color_sensor = pipeline_profile.get_device().query_sensors()[1]
+        exposure = 100.00 ## default 144
+        color_sensor.set_option(rs.option.exposure, exposure)
+        print(f"set expoure: {exposure}")
+
+        sharpness = 100.00 ## default 50
+        sharpness = 50.00 ## default 50
+        color_sensor.set_option(rs.option.sharpness, sharpness)
+        print(f"set sharpness: {sharpness}")
 
         align_to = rs.stream.color
         self.align = rs.align(align_to)
@@ -238,3 +248,16 @@ class CV2VideoWithMiDas(CV2Video):
         out = 255 * (depth - depth_min) / (depth_max - depth_min)
         out = out.astype(np.uint8)
         return out
+
+def main():
+    vid = RealSense(1280, 720)
+    vid.start()
+    while True:
+        [depth, color] = vid.read()
+        cv2.imshow('RealSense', color)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+
+if __name__ == "__main__":
+    main()
