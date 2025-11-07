@@ -1,0 +1,22 @@
+{
+    "input_1": {
+        "value": "1200",
+        "color": "#FF0000"
+    },
+    "input_2": {
+        "value": "2000",
+        "color": "#0000D9"
+    },
+    "input_3": {
+        "value": "2500",
+        "color": "#D900D9"
+    },
+    "input_4": {
+        "value": "2950",
+        "color": "#00D9D9"
+    },
+    "input_5": {
+        "value": 0,
+        "color": "#FFD900"
+    }
+}
