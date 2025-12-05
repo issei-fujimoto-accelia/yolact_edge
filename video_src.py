@@ -65,14 +65,23 @@ class RealSense(VideoSrc):
                 print(f"set {PRESET}")
 
         color_sensor = pipeline_profile.get_device().query_sensors()[1]
-        exposure = 100.00 ## default 144
+        exposure = 90.00 ## default 144
+        color_sensor.set_option(rs.option.enable_auto_exposure, False)
         color_sensor.set_option(rs.option.exposure, exposure)
         print(f"set expoure: {exposure}")
 
-        sharpness = 100.00 ## default 50
+        gain = 64 ## default 64
+        gain = 32 ## default 64
+        color_sensor.set_option(rs.option.gain, gain)
+        print(f"set gain: {gain}")
+
+        # sharpness = 100.00 ## default 50
         sharpness = 50.00 ## default 50
         color_sensor.set_option(rs.option.sharpness, sharpness)
         print(f"set sharpness: {sharpness}")
+
+        color_sensor.set_option(rs.option.enable_auto_white_balance, False)
+        color_sensor.set_option(rs.option.white_balance, 4600)
 
         align_to = rs.stream.color
         self.align = rs.align(align_to)

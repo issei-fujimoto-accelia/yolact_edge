@@ -105,3 +105,66 @@ https://nutritionfoodtech.com/2022/11/02/%e8%bb%bd%e9%87%8f%e3%81%aa%e3%82%a4%e3
 - ラインをプロジェクターで投影し、ラインの長さ計測
 - 倍率=実際のラインの長さ(20cm))/投影されたラインの長さ
 - 投影映像を倍率分拡大する
+
+
+
+---
+## サイズのキャリブレーション
+距離と像のサイズは2条に反比例
+
+距離と測定値
+794, 29397
+600, 49832
+455, 86544
+
+### キャリブレーション（基準）値
+D_REF = 794.0    # mm
+S_REF = 29397.0  # 基準像サイズ（面積など）
+L_REF = 7.5      # cm（実サイズ）
+
+
+def estimate_physical_size(s, d,
+                           s_ref=S_REF,
+                           d_ref=D_REF,
+                           l_ref=L_REF):
+    """観測像サイズ s, 距離 d から実サイズ L を推定"""
+    return l_ref * np.sqrt(s / s_ref) * (d / d_ref)
+
+
+### 距離のキャリブレーション
+深度カメラの上下、左右で測定値が異なる
+以下の6点でキャリブレーションする
+
+- 中央列の、上、中央、下
+- 中央列の、左、中央、右
+
+## memo2
+$ realsense-viewer
+$ python run_with_window.py 
+
+
+10月中旬
+
+色はパレットで選択式
+赤、青、ピンク、水色、
+
+表示する点のサイズを変更できるようにする
+
+
+## スリープ
+蓋を閉じてもスリープにしない
+`vi /etc/systemd/logind.conf`
+HandleLidSwitch=ignore
+
+restart 
+`systemctl restart systemd-logind.service`
+
+
+しばらく操作がない場合でもスリープにしない
+`vi /usr/share/gdm/dconf/90-local-settings`
+
+```
+[org / gnome / settings-daemon / plugins / power]
+sleep-inactive-ac-timeout = 0
+sleep-inactive-battery-timeout = 0
+```

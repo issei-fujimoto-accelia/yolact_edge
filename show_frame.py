@@ -20,11 +20,14 @@ from yolact_edge.utils.augmentations import BaseTransform
 
 from video_src import RealSense, CV2Video
 
-## --- 出力するサイズ ---
+## ------------------------- 出力するサイズ -------------------------
+## pcのディスプレイは16:10(1920:1200)
+## プロジェクターは16:9(1920:1080)
 ## full hd 16:9
 WIDTH = 1920
 HEIGHT = 1080 - 100  ## プロジェクターだと高さがカットされてる
 HEIGHT = 1080 - 48  ## プロジェクターだと高さがカットされてる
+HEIGHT = 1080  ## プロジェクターだと高さがカットされてる
 
 ## hd 16:9
 # WIDTH=1280
@@ -35,10 +38,10 @@ HEIGHT = 1080 - 48  ## プロジェクターだと高さがカットされてる
 
 # WIDTH=1920
 # HEIGHT=1080
-## --- 出力するサイズ ---
+## ------------------------- 出力するサイズ -------------------------
 
 
-## --- 取り込むカメラのサイズ ---
+## ------------------------- 取り込むカメラのサイズ -------------------------
 ## 4:3
 # CAM_WIDTH=640
 # CAM_HEIGHT=480
@@ -48,11 +51,14 @@ HEIGHT = 1080 - 48  ## プロジェクターだと高さがカットされてる
 # CAM_HEIGHT = 360
 CAM_WIDTH = 1280
 CAM_HEIGHT = 720
-## --- 取り込むカメラのサイズ ---
+## ------------------------- 取り込むカメラのサイズ -------------------------
 
+
+## ------------------------- color -------------------------
 FPS = 10
 # FPS = 5
 FPS = 15
+FPS = 5
 
 # COLOR_SET = dict(
 #     green=(0, 255, 0),
@@ -70,8 +76,10 @@ FPS = 15
 #     M=COLOR_SET["puple"],
 # )
 COLORS = dict()
+## ------------------------- color -------------------------
 
-## --- size ---
+
+## ------------------------- size -------------------------
 # SIZE_SMALL= 5000
 # SIZE_MIDIUM = 20000
 
@@ -82,24 +90,59 @@ SIZE_L3 = 1600
 SIZE_L2 = 1300
 SIZE_L = 1200
 SIZE_M = 1000
-## --- size ---
 
-## -- convert to ---
 
+SIZE_L3 = 8
+SIZE_L2 = 7
+SIZE_L = 6
+SIZE_M = 5
+## ------------------------- size -------------------------
+
+
+## ------------------------- convert to -------------------------
 ## check_cam.pyで４点を選択する
 # PTS = [[84, 35], [502, 49], [507, 280], [73, 279]]
 PTS = [[141, 82], [424, 88], [431, 243], [138, 245]]
 PTS = [[179, 78], [501, 53], [518, 238], [187, 254]]
+## ------------------------- convert to -------------------------
 
 
-## -- convert to ---
+## -------------------------  -------------------------
+SINGLE_DISPLAY=False
+# SINGLE_DISPLAY=True
+## -------------------------  -------------------------
 
-
-DOT_RAD = 20
+DOT_RAD = 30
 
 TURNIP_LABEL_IDX = 0
 
 color_cache = defaultdict(lambda: {})
+
+
+## ------------------------- 深度キャリブレーション -------------------------
+SIZE_WITH_DEPTH=True
+# SIZE_WITH_DEPTH=False
+
+import depth_caliblation
+H, W = 720, 1280
+depth_bias = depth_caliblation.build_bias_map(H, W,
+                      d_top=790,
+                      d_center=795,
+                      d_bottom=806,
+                      d_left=797,
+                      d_right=793)
+
+D_REF = 794.0
+S_REF = 29397.0
+L_REF = 7.5
+def estimate_physical_size(s, d,
+                           s_ref=S_REF,
+                           d_ref=D_REF,
+                           l_ref=L_REF):
+    """観測像サイズ s, 距離 d から実サイズ L を推定"""
+
+    return l_ref * np.sqrt(s / s_ref) * float(d / d_ref)
+## ------------------------- 深度キャリブレーション -------------------------
 
 
 def override_global_color_size_pts(sizes, colors, points):
@@ -380,8 +423,16 @@ def prep_display_for_ui(
     """
     Note: If undo_transform=False then im_h and im_w are allowed to be None.
     """
-    show_img = torch.zeros(img.shape, dtype=torch.int8)
-    show_img = show_img + 255
+    ## プロジェクションの背景色
+    R, G, B = 255, 255, 255 ## white
+    R, G, B = 255, 215, 0 ## gold
+    R, G, B = 0, 0, 0 ## black
+    R, G, B = 79, 79, 79 ## gray
+    show_img = torch.full(img.shape, 0, dtype=torch.uint8)
+    show_img[..., 0] = B
+    show_img[..., 1] = G
+    show_img[..., 2] = R
+
     if args.cuda:
         show_img = show_img.cuda()
 
@@ -431,8 +482,7 @@ def prep_display_for_ui(
         # No detections found so just output the original image
         return preview_img_numpy, (show_img_gpu * 255).byte().cpu().numpy()
 
-    def get_color_by_size(mask, on_gpu=True):
-        size = torch.count_nonzero(mask)
+    def get_color_by_size(size, on_gpu=True):
         if size < SIZE_M:
             select_color = "M"
         elif size < SIZE_L:
@@ -448,17 +498,37 @@ def prep_display_for_ui(
             color = torch.Tensor(color).to("cuda").float() / 255.0
         ## color_cache[on_gpu][color_idx] = color
         return color
-
+    
     show_img_numpy = (show_img_gpu * 255).byte().cpu().numpy()
     # preview_img_numpy = (preview_img_gpu * 255).byte().cpu().numpy()
 
     for j in reversed(range(num_dets_to_consider)):
         x1, y1, x2, y2 = boxes[j, :]
-        # color = get_color(j)
-        color = get_color_by_size(masks[j], on_gpu=False)
-
         _x = int((x2 - x1) // 2 + x1)
         _y = int((y2 - y1) // 2 + y1)
+
+        # color = get_color(j)
+        if depth is not None and SIZE_WITH_DEPTH:
+            depth_value = depth_caliblation.correct_depth(depth, depth_bias) ## キャリブレーション
+            depth_value = min(
+                [
+                    depth[_y + 2][_x],
+                    depth[_y - 2][_x],
+                    depth[_y][_x + 2],
+                    depth[_y][_x - 2],
+                    depth[_y][_x],
+                ]
+            )  # 周辺の最小値
+            # depth_value = np.mean([depth[_y+2][_x], depth[_y-2][_x], depth[_y][_x+2], depth[_y][_x-2], depth[_y][_x]]) # 周辺の平均
+            
+            size = torch.count_nonzero(masks[j])            
+            size = size.cpu().numpy()
+            size = estimate_physical_size(size, depth_value)
+            color = get_color_by_size(size, on_gpu=False)
+        else:
+            size = torch.count_nonzero(masks[j])
+            color = get_color_by_size(size, on_gpu=False)
+
         cv2.circle(
             show_img_numpy,
             center=(_x, _y),
@@ -473,30 +543,22 @@ def prep_display_for_ui(
         cv2.rectangle(preview_img_numpy, (x1, y1), (x2, y2), color, 1)
 
         ## size
-        size = torch.count_nonzero(masks[j])
-        text_str = "size: %d" % size
+        # size = torch.count_nonzero(masks[j])
+        text_str = "size: %.2f" % size
 
         ## depth
         if depth is not None:
-            depth_value = min(
-                [
-                    depth[_y + 2][_x],
-                    depth[_y - 2][_x],
-                    depth[_y][_x + 2],
-                    depth[_y][_x - 2],
-                    depth[_y][_x],
-                ]
-            )  # 周辺の最小値
-            # depth_value = np.mean([depth[_y+2][_x], depth[_y-2][_x], depth[_y][_x+2], depth[_y][_x-2], depth[_y][_x]]) # 周辺の平均
             text_str += ",depth %.2f" % depth_value
 
         font_face = cv2.FONT_HERSHEY_DUPLEX
-        font_scale = 0.6
+        font_scale = 1.8
         font_thickness = 1
-
+        
         text_pt = (x1, y1 - 3)
+        # text_pt = (x1 - 600, y1 -  3)
         # text_color = [255, 255, 255]
         text_color = [0, 0, 0]
+        text_color = [0, 0, 255]
         cv2.putText(
             preview_img_numpy,
             text_str,
@@ -775,9 +837,11 @@ def evalvideo_show_frame(
                 show_img = frame_buffer.get()
                 show_frame = cv2.resize(show_img, dsize=(WIDTH, HEIGHT))
                 cv2.imshow("frame", show_frame)
+                cv2.setWindowProperty("frame", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
                 ## PCを閉じるとディスプレイはプロジェクターのみの判定となる
                 ## 位置を固定して全画面にする
-                # cv2.moveWindow("frame", 0, 0)
+                if SINGLE_DISPLAY:
+                    cv2.moveWindow("frame", 0, 0)
                 last_time = next_time
 
                 ## frame更新のタイミングで上書きするが更新頻度が高すぎる

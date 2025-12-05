@@ -50,10 +50,10 @@ def main():
 
     ## windowのclose buttonのcallback
     root.protocol("WM_DELETE_WINDOW", close)
-
-    if event.is_set():
-        print("event is set()")
-        close()
+    def has_exception():
+        if event.is_set():
+            close()
+    root.after(1000, has_exception)
 
     root.mainloop()
     process.join()
